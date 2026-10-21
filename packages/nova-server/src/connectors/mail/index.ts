@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // Connecteur Mail. Fournisseur choisi par NOVA_MAIL_BACKEND :
 //   maildir (défaut) : data/mail/, format ouvert ; démonstration et tests
-//   imap             : NOVA_MAIL_USER, NOVA_MAIL_PASSWORD, NOVA_MAIL_IMAP_HOST[, _PORT], NOVA_MAIL_SMTP_HOST[, _PORT], NOVA_MAIL_TLS
+//   imap             : NOVA_MAIL_USER, NOVA_MAIL_PASSWORD, NOVA_MAIL_IMAP_HOST[, _PORT], NOVA_MAIL_SMTP_HOST[, _PORT], NOVA_MAIL_TLS,
+//                      NOVA_MAIL_FROM (adresse d'expédition, par défaut l'identifiant s'il est une adresse)
 
 import { z } from "zod";
 import { RIGHT, SENSITIVE, dataDir, guard, ok, serve, server } from "../kit.js";
-import { address, type MailBackend } from "./backend.js";
+import { address as bare, type MailBackend } from "./backend.js";
 import { imap } from "./imap.js";
 import { maildir } from "./maildir.js";
 
@@ -14,6 +15,7 @@ const backend: MailBackend =
   env.NOVA_MAIL_BACKEND === "imap"
     ? imap({
         user: need("NOVA_MAIL_USER"),
+        from: address(env.NOVA_MAIL_FROM ?? need("NOVA_MAIL_USER")),
         password: need("NOVA_MAIL_PASSWORD"),
         imapHost: need("NOVA_MAIL_IMAP_HOST"),
         imapPort: Number(env.NOVA_MAIL_IMAP_PORT ?? 993),
@@ -94,7 +96,7 @@ s.registerTool(
       return ok({
         summary: `Envoyer « ${d.subject} » à ${names}`,
         recipients: to.length,
-        unknownRecipient: to.some((x) => !known.has(address(x))),
+        unknownRecipient: to.some((x) => !known.has(bare(x))),
       });
     }
     return ok({ envoye: await backend.send(id) });
@@ -103,6 +105,11 @@ s.registerTool(
 
 process.on("SIGTERM", () => backend.close().finally(() => process.exit(0)));
 await serve(s);
+
+function address(a: string) {
+  if (!/^[^\s@<>]+@[^\s@<>]+$/.test(a)) throw new Error(`Adresse d'expédition invalide : « ${a} ». Renseigne NOVA_MAIL_FROM (ex. regie@exemple.ch).`);
+  return a;
+}
 
 function need(name: string) {
   const v = env[name];

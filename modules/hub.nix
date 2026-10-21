@@ -11,13 +11,14 @@ let
       with cfg.connectors.mail; {
         NOVA_MAIL_BACKEND = "imap";
         NOVA_MAIL_USER = user;
+        NOVA_MAIL_FROM = address;
         NOVA_MAIL_IMAP_HOST = imapHost;
         NOVA_MAIL_IMAP_PORT = toString imapPort;
         NOVA_MAIL_SMTP_HOST = smtpHost;
         NOVA_MAIL_SMTP_PORT = toString smtpPort;
         NOVA_MAIL_TLS = if tls then "1" else "0";
       }
-    else { NOVA_MAIL_BACKEND = "maildir"; NOVA_MAIL_FROM = cfg.connectors.mail.user; };
+    else { NOVA_MAIL_BACKEND = "maildir"; NOVA_MAIL_FROM = cfg.connectors.mail.address; };
 
   agendaEnv =
     if cfg.connectors.agenda.backend == "caldav" then
@@ -35,7 +36,8 @@ in
     connectors = {
       mail = {
         backend = mkOption { type = types.enum [ "maildir" "imap" ]; default = "maildir"; description = "maildir : data/mail/ ; imap : la vraie boîte (IMAP + SMTP)."; };
-        user = mkOption { type = types.str; default = "regie@example.org"; description = "Adresse de la boîte (identifiant IMAP/SMTP)."; };
+        address = mkOption { type = types.str; default = "regie@example.org"; description = "Adresse d'expédition de la boîte."; };
+        user = mkOption { type = types.str; default = cfg.connectors.mail.address; defaultText = "nova.connectors.mail.address"; description = "Identifiant IMAP/SMTP (souvent l'adresse elle-même)."; };
         imapHost = mkOption { type = types.str; default = ""; };
         imapPort = mkOption { type = types.port; default = 993; };
         smtpHost = mkOption { type = types.str; default = ""; };

@@ -55,7 +55,7 @@ pkgs.testers.runNixOSTest {
     machine.succeed("curl -sf -u regie:secret-de-test -X MKCALENDAR http://127.0.0.1:5232/regie/agenda/")
 
     machine.succeed(
-        "NOVA_MAIL_BACKEND=imap NOVA_MAIL_USER=regie NOVA_MAIL_PASSWORD=secret-de-test "
+        "NOVA_MAIL_BACKEND=imap NOVA_MAIL_USER=regie NOVA_MAIL_FROM=regie@example.org NOVA_MAIL_PASSWORD=secret-de-test "
         "NOVA_MAIL_IMAP_HOST=127.0.0.1 NOVA_MAIL_IMAP_PORT=143 NOVA_MAIL_SMTP_HOST=127.0.0.1 NOVA_MAIL_SMTP_PORT=1025 NOVA_MAIL_TLS=0 "
         "NOVA_LIVE_MAILPIT=http://127.0.0.1:8025 "
         "NOVA_AGENDA_BACKEND=caldav NOVA_AGENDA_URL=http://127.0.0.1:5232/ NOVA_AGENDA_USER=regie NOVA_AGENDA_PASSWORD=secret-de-test "

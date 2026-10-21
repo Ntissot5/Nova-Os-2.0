@@ -8,7 +8,8 @@ import { compose } from "./compose.js";
 import { address, snippet, type Draft, type MailBackend, type MailMessage } from "./backend.js";
 
 export interface ImapConfig {
-  user: string;
+  user: string; // identifiant de connexion
+  from: string; // adresse d'expédition (souvent identique à l'identifiant, pas toujours)
   password: string;
   imapHost: string;
   imapPort: number;
@@ -106,7 +107,7 @@ export function imap(cfg: ImapConfig): MailBackend {
       return fetch(kind, uid);
     },
     async draft(d: Draft) {
-      const res = await client.append(await mailboxOf("brouillons"), await compose(cfg.user, d), ["\\Draft", "\\Seen"]);
+      const res = await client.append(await mailboxOf("brouillons"), await compose(cfg.from, d), ["\\Draft", "\\Seen"]);
       if (!res || !res.uid) throw new Error("Le serveur n'a pas accepté le brouillon.");
       return `brouillons:${res.uid}`;
     },
@@ -132,7 +133,7 @@ export function imap(cfg: ImapConfig): MailBackend {
       } finally {
         lock.release();
       }
-      const info = await smtp.sendMail({ envelope: { from: cfg.user, to: recipients }, raw });
+      const info = await smtp.sendMail({ envelope: { from: cfg.from, to: recipients }, raw });
       const sent = await client.append(await mailboxOf("envoyes"), raw, ["\\Seen"]);
       const lock2 = await client.getMailboxLock(drafts);
       try {
