@@ -73,6 +73,14 @@
 
 **Mesure :** `scripts/bench-export` — exporter la boîte pilote anonymisée, importer sur une VM vierge, comparer les empreintes. Cible : 0 différence, < 30 min.
 
+**État (21 octobre 2026) :**
+- ✓ `EXPORT-SPEC.md` v1 ; `nova export`, `nova verifier`, `nova import` ; archive reproductible au bit près, vérifiable sans Nova (`sha256sum -c`).
+- ✓ Sauvegarde : un export complet chaque nuit, les 7 derniers gardés.
+- ✓ Test VM `portabilite` : export sur une machine, import sur une machine neuve, 0 différence, durée chronométrée (cible < 30 min).
+- ✓ Flotte du Hub : version du système, retour à la version précédente, révocation et rétablissement d'accès (persistants), dans l'espace Entreprise.
+- ✓ Correctif : les employés ne lisent plus `data/` directement (D-026).
+- ⏳ Postes distants : identité des machines et des personnes à trancher (Q-3), puis « 3 postes gérés depuis l'espace Entreprise ».
+
 ## Semaine 12 — Marge
 
 Imprévus et mise en route chez le pilote.

@@ -114,9 +114,10 @@ export function Entreprise({ state, now }: { state: State; now: Date }) {
             id="gains"
             aside={
               moi.role === "dirigeant" && (
-                <a className="caption" href="#/couts">
-                  Coûts
-                </a>
+                <span className="caption actions">
+                  <a href="#/couts">Coûts</a>
+                  <a href="#/flotte">Flotte</a>
+                </span>
               )
             }
           >

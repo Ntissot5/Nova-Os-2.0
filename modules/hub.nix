@@ -51,6 +51,23 @@ in
       };
     };
 
+    sourceDir = mkOption {
+      type = types.nullOr types.path;
+      default = null;
+      description = "Dossier de l'entreprise (company.nix) : inclus dans chaque export.";
+    };
+
+    flakeLock = mkOption {
+      type = types.nullOr types.path;
+      default = null;
+      description = "flake.lock utilisé pour construire la machine : inclus dans chaque export (versions exactes).";
+    };
+
+    sauvegarde = {
+      enable = mkOption { type = types.bool; default = true; description = "Un export complet chaque nuit dans /var/lib/nova/exports."; };
+      garder = mkOption { type = types.ints.positive; default = 7; description = "Nombre d'exports gardés."; };
+    };
+
     models.question = mkOption {
       type = types.str;
       default = "claude-sonnet-5-5";
@@ -74,7 +91,95 @@ in
     systemd.tmpfiles.rules = [
       "d /var/lib/nova 0750 root nova -"
       "d /var/lib/nova/data 2770 nova-gateway nova -"
+      "d /var/lib/nova/exports 0700 nova-gateway nova -"
     ];
+
+    # La commande `nova` (export, verifier, import) et ce qu'elle exporte avec data/.
+    environment.systemPackages = [ nova ];
+    environment.etc = lib.mkMerge [
+      (lib.mkIf (cfg.sourceDir != null) { "nova/source/company.nix".source = cfg.sourceDir + "/company.nix"; })
+      (lib.mkIf (cfg.flakeLock != null) { "nova/flake.lock".source = cfg.flakeLock; })
+    ];
+
+    # ---------- Flotte : retour arrière et révocation, demandés par le gardien, exécutés par systemd ----------
+
+    systemd.services.nova-retour = {
+      description = "Nova : revenir à la version précédente du système";
+      serviceConfig.Type = "oneshot";
+      script = ''
+        ${config.nix.package}/bin/nix-env -p /nix/var/nix/profiles/system --rollback
+        exec /nix/var/nix/profiles/system/bin/switch-to-configuration switch
+      '';
+    };
+
+    # Une révocation est gardée dans data/flotte/revocations.json (elle voyage avec l'export) et réappliquée
+    # à chaque activation : NixOS régénère les comptes, un simple verrouillage serait sinon effacé.
+    systemd.services."nova-revoquer@" = {
+      description = "Nova : révoquer l'accès de %i";
+      serviceConfig.Type = "oneshot";
+      scriptArgs = "%i";
+      path = [ pkgs.shadow pkgs.systemd ];
+      script = ''
+        case "$1" in ${lib.concatStringsSep "|" (lib.attrNames cfg.people)}) ;; *) echo "Personne inconnue : $1"; exit 1 ;; esac
+        usermod -L "$1"
+        loginctl terminate-user "$1" || true
+      '';
+    };
+    systemd.services."nova-retablir@" = {
+      description = "Nova : rétablir l'accès de %i";
+      serviceConfig.Type = "oneshot";
+      scriptArgs = "%i";
+      path = [ pkgs.shadow ];
+      script = ''
+        case "$1" in ${lib.concatStringsSep "|" (lib.attrNames cfg.people)}) ;; *) echo "Personne inconnue : $1"; exit 1 ;; esac
+        usermod -U "$1"
+      '';
+    };
+    system.activationScripts.nova-revocations = {
+      deps = [ "users" ];
+      text = ''
+        f=/var/lib/nova/data/flotte/revocations.json
+        if [ -f "$f" ]; then
+          for u in $(${pkgs.jq}/bin/jq -r '.[]' "$f"); do ${pkgs.shadow}/bin/usermod -L "$u" 2>/dev/null || true; done
+        fi
+      '';
+    };
+
+    security.polkit.enable = true;
+    security.polkit.extraConfig = ''
+      // Le gardien de Nova peut demander ces opérations, et seulement elles.
+      polkit.addRule(function (action, subject) {
+        if (action.id == "org.freedesktop.systemd1.manage-units" && subject.user == "nova-gateway" && action.lookup("verb") == "start") {
+          var unit = action.lookup("unit");
+          if (unit == "nova-retour.service" || /^nova-(revoquer|retablir)@[a-z0-9_-]+\.service$/.test(unit)) return polkit.Result.YES;
+        }
+      });
+    '';
+
+    # Sauvegarde : un export complet chaque nuit, les plus anciens supprimés.
+    systemd.services.nova-sauvegarde = lib.mkIf cfg.sauvegarde.enable {
+      description = "Nova : export complet de l'entreprise";
+      serviceConfig = {
+        Type = "oneshot";
+        User = "nova-gateway";
+        Group = "nova";
+        UMask = "0077";
+        ProtectSystem = "strict";
+        ReadWritePaths = [ "/var/lib/nova/exports" ];
+        ProtectHome = true;
+        PrivateTmp = true;
+        NoNewPrivileges = true;
+      };
+      path = [ pkgs.coreutils pkgs.findutils ];
+      script = ''
+        ${lib.getExe' nova "nova"} export --sortie /var/lib/nova/exports
+        ls -1t /var/lib/nova/exports/nova-export-*.tar.gz | tail -n +${toString (cfg.sauvegarde.garder + 1)} | xargs -r rm -f
+      '';
+    };
+    systemd.timers.nova-sauvegarde = lib.mkIf cfg.sauvegarde.enable {
+      wantedBy = [ "timers.target" ];
+      timerConfig = { OnCalendar = "*-*-* 02:30"; Persistent = true; RandomizedDelaySec = "15m"; };
+    };
 
     # Au premier démarrage, data/ de l'entreprise est copié en place, puis n'est plus jamais écrasé.
     systemd.services.nova-data = lib.mkIf (cfg.data != null) {
@@ -103,6 +208,7 @@ in
         NOVA_MODEL_QUESTION = cfg.models.question;
         NOVA_SKILLS = "${nova}/share/nova-verticals";
       } // mailEnv // agendaEnv;
+      path = [ pkgs.systemd ]; # systemctl : demandes à la flotte (polkit)
       serviceConfig = {
         ExecStart = lib.getExe' nova "nova-gateway";
         User = "nova-gateway";

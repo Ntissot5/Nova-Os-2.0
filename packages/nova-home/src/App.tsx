@@ -5,6 +5,7 @@ import { useRoute } from "./route";
 import { Agent } from "./screens/Agent";
 import { Demander } from "./screens/Demander";
 import { CoutsScreen } from "./screens/Mesures";
+import { FlotteScreen } from "./screens/Flotte";
 import { Design } from "./screens/Design";
 import { Entreprise } from "./screens/Entreprise";
 
@@ -50,6 +51,8 @@ export function App() {
             {online ? "Ouverture de l'entreprise…" : "Le service Nova ne répond pas. Il redémarre tout seul ; réessaie dans un instant."}
           </p>
         </Page>
+      ) : route.name === "flotte" ? (
+        <FlotteScreen now={now} />
       ) : route.name === "couts" ? (
         <CoutsScreen state={state} />
       ) : route.name === "agent" ? (

@@ -34,6 +34,10 @@ scripts/dev            # Nova Home en démonstration → http://127.0.0.1:5173
 | Test de la VM complète (KVM nécessaire) | `nix build .#checks.x86_64-linux.vm-demo -L` |
 | Image d'installation (clé USB, sans question) | `nix build .#installer-demo` |
 | Vérifier une couleur d'accent | `node design/build.mjs check '#0A6CFF'` |
+| Exporter toute l'entreprise | `sudo -u nova-gateway nova export` |
+| Vérifier ou importer une archive | `nova verifier <archive> [--data <dossier>]` · `nova import <archive> --data <dossier>` |
+| Rapport du pilote | `scripts/rapport-pilote <data> <mise en service> <postes>` |
+| Mesurer les questions (clé d'API) | `scripts/bench-question` |
 
 ## Le dépôt
 
@@ -58,6 +62,7 @@ tests/                   Test VM de bout en bout, test de l'interface
 | [`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md) | Tokens, matière verre, composants, règles d'écriture |
 | [`ROADMAP.md`](ROADMAP.md) | Les phases du MVP et leurs métriques |
 | [`DECISIONS.md`](DECISIONS.md) | Les choix tranchés et les questions ouvertes |
+| [`EXPORT-SPEC.md`](EXPORT-SPEC.md) | Le format d'export : toute l'entreprise, lisible sans Nova |
 
 ## Statut
 
