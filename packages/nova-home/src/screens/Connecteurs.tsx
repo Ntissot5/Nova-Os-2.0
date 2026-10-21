@@ -38,6 +38,13 @@ interface Liste {
 
 const INTEGRES: Record<string, string> = { mail: "Mail", agenda: "Agenda", fichiers: "Fichiers", compta: "Comptabilité", telephone: "Téléphonie" };
 
+type EtatMicrosoft =
+  | { etat: "indisponible"; raison: string }
+  | { etat: "deconnecte" }
+  | { etat: "en-attente"; code: string; adresse: string; expire: string }
+  | { etat: "connecte"; compte: string; nom?: string; depuis: string; services: string[] }
+  | { etat: "erreur"; erreur: string };
+
 type Formulaire = { mode: "ajouter"; fiche?: Fiche } | { mode: "regler"; connecteur: Ajoute };
 
 export function ConnecteursScreen({ now }: { now: Date }) {
@@ -50,6 +57,20 @@ export function ConnecteursScreen({ now }: { now: Date }) {
       .catch(() => setError("Le service Nova ne répond pas."));
   useEffect(() => void load(), []);
   const nomAgent = (id: string) => l?.agents.find((a) => a.id === id)?.nom ?? id;
+  const [ms, setMs] = useState<EtatMicrosoft>();
+  const loadMs = () =>
+    fetch("/api/microsoft")
+      .then((r) => (r.ok ? r.json() : undefined))
+      .then(setMs)
+      .catch(() => {});
+  useEffect(() => void loadMs(), []);
+  // Pendant que le dirigeant tape le code chez Microsoft, on regarde toutes les 2 secondes si c'est fait.
+  useEffect(() => {
+    if (ms?.etat !== "en-attente") return;
+    const t = setInterval(loadMs, 2000);
+    return () => clearInterval(t);
+  }, [ms?.etat]);
+  const outlook = ms?.etat === "connecte" ? ms : undefined;
 
   return (
     <Page>
@@ -59,12 +80,16 @@ export function ConnecteursScreen({ now }: { now: Date }) {
       </header>
       <div className="stack" style={{ maxWidth: 880 }}>
         {error && <p className="state-attention">{error}</p>}
+        {ms && <MicrosoftTile ms={ms} now={now} onChange={setMs} />}
         {l && (
           <Bloc title="Branchés" className="glass-strong" aside={<span className="pill">{l.integres.length + l.ajoutes.length}</span>}>
             <ul className="list">
               {l.integres.map((c) => (
                 <li key={c.id}>
-                  <Phrase meta={`Intégré à Nova · ${plural(c.outils, "outil", "outils")}`} state="positive">
+                  <Phrase
+                    meta={`${outlook && (c.id === "mail" || c.id === "agenda") ? `Outlook · ${outlook.compte}` : "Intégré à Nova"} · ${plural(c.outils, "outil", "outils")}`}
+                    state="positive"
+                  >
                     {INTEGRES[c.id] ?? c.id}
                   </Phrase>
                 </li>
@@ -138,6 +163,65 @@ export function ConnecteursScreen({ now }: { now: Date }) {
         />
       )}
     </Page>
+  );
+}
+
+function MicrosoftTile({ ms, now, onChange }: { ms: EtatMicrosoft; now: Date; onChange: (e: EtatMicrosoft) => void }) {
+  const post = async (path: string) => {
+    const r = await fetch(`/api/microsoft/${path}`, { method: "POST", headers: { "x-nova": "1" } });
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.erreur);
+    if (path === "deconnecter") onChange({ etat: "deconnecte" });
+    else onChange(body);
+  };
+  return (
+    <Bloc title="Microsoft 365" id="microsoft" className="glass-strong" aside={ms.etat === "connecte" ? <span className="pill state-positive">Connecté</span> : undefined}>
+      {ms.etat === "connecte" ? (
+        <>
+          <Phrase meta={`${ms.services.join(" et ")} passent par Outlook · connecté ${relative(ms.depuis, now)}`}>{ms.nom ? `${ms.nom} (${ms.compte})` : ms.compte}</Phrase>
+          <div className="actions">
+            <Button variant="discret" onClick={() => post("deconnecter")}>
+              Déconnecter
+            </Button>
+          </div>
+        </>
+      ) : ms.etat === "en-attente" ? (
+        <div className="stack" style={{ gap: "var(--space-2)" }} role="status">
+          <p>
+            Ouvre{" "}
+            <a href={ms.adresse} target="_blank" rel="noreferrer">
+              {ms.adresse.replace(/^https:\/\//, "")}
+            </a>{" "}
+            et tape ce code :
+          </p>
+          <p className="code-connexion" aria-label={`Code : ${ms.code.split("").join(" ")}`}>
+            {ms.code}
+          </p>
+          <p className="caption">Connecte-toi avec le compte Microsoft de l'entreprise et accepte. Cette page se met à jour toute seule.</p>
+          <div className="actions">
+            <Button variant="discret" onClick={() => navigator.clipboard?.writeText(ms.code)}>
+              Copier le code
+            </Button>
+          </div>
+        </div>
+      ) : ms.etat === "indisponible" ? (
+        <p className="caption">{ms.raison}</p>
+      ) : (
+        <>
+          <p>Mail et agenda Outlook en un clic. Les agents travaillent dans ta vraie boîte, et leurs brouillons apparaissent aussi dans Outlook.</p>
+          {ms.etat === "erreur" && (
+            <p className="state-attention" role="alert">
+              {ms.erreur}
+            </p>
+          )}
+          <div className="actions">
+            <Button variant="principal" onClick={() => post("connecter")}>
+              Se connecter avec Microsoft
+            </Button>
+          </div>
+        </>
+      )}
+    </Bloc>
   );
 }
 

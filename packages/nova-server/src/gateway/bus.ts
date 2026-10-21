@@ -65,32 +65,61 @@ export class Bus {
     private dir = fileURLToPath(new URL("../connectors/", import.meta.url)),
   ) {}
 
+  /** Variables propres à un connecteur, par-dessus l'environnement commun (ex. fournisseur Microsoft 365). */
+  private overrides = new Map<ConnectorName, Record<string, string>>();
+
+  /** Avant start() : réglages propres à un connecteur. */
+  override(name: ConnectorName, env: Record<string, string>) {
+    this.overrides.set(name, env);
+  }
+
   async start(only: readonly ConnectorName[] = CONNECTORS) {
-    await Promise.all(
-      only.map(async (name) => {
-        const client = new Client({ name: "nova-gateway", version: "0.1.0" });
-        await client.connect(
-          new StdioClientTransport({
-            command: process.execPath,
-            args: [join(this.dir, ENTRY[name])],
-            env: { PATH: process.env.PATH ?? "", ...this.env },
-            stderr: "inherit",
-          }),
-        );
-        this.clients.set(name, client);
-        const { tools } = await client.listTools();
-        for (const t of tools)
-          this.catalog.set(t.name, {
-            name: t.name,
-            connector: name,
-            title: t.title ?? t.name,
-            description: t.description ?? "",
-            inputSchema: t.inputSchema as Record<string, unknown>,
-            right: String(t._meta?.["nova/right"] ?? "read"),
-            sensitive: Boolean(t._meta?.["nova/sensitive"]),
-          });
+    await Promise.all(only.map((name) => this.startOne(name)));
+  }
+
+  /** Relance un connecteur intégré avec d'autres réglages (changer de fournisseur sans redémarrer Nova). */
+  async restart(name: ConnectorName, env: Record<string, string> | undefined) {
+    if (env) this.overrides.set(name, env);
+    else this.overrides.delete(name);
+    // Le nouveau connecteur démarre avant que l'ancien ne parte : un agent au travail ne voit jamais l'outil disparaître.
+    const old = this.clients.get(name);
+    const { client, tools } = await this.launch(name);
+    for (const [tool, t] of this.catalog) if (t.connector === name) this.catalog.delete(tool);
+    this.register(name, client, tools);
+    await old?.close().catch(() => {});
+  }
+
+  private async startOne(name: ConnectorName) {
+    const { client, tools } = await this.launch(name);
+    this.register(name, client, tools);
+  }
+
+  private async launch(name: ConnectorName) {
+    const client = new Client({ name: "nova-gateway", version: "0.1.0" });
+    await client.connect(
+      new StdioClientTransport({
+        command: process.execPath,
+        args: [join(this.dir, ENTRY[name])],
+        env: { PATH: process.env.PATH ?? "", ...this.env, ...this.overrides.get(name) },
+        stderr: "inherit",
       }),
     );
+    const { tools } = await client.listTools();
+    return { client, tools };
+  }
+
+  private register(name: ConnectorName, client: Client, tools: Awaited<ReturnType<Client["listTools"]>>["tools"]) {
+    this.clients.set(name, client);
+    for (const t of tools)
+      this.catalog.set(t.name, {
+        name: t.name,
+        connector: name,
+        title: t.title ?? t.name,
+        description: t.description ?? "",
+        inputSchema: t.inputSchema as Record<string, unknown>,
+        right: String(t._meta?.["nova/right"] ?? "read"),
+        sensitive: Boolean(t._meta?.["nova/sensitive"]),
+      });
   }
 
   /**

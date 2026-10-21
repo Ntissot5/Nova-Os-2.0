@@ -1,4 +1,4 @@
-// Le catalogue : les services que les PME suisses utilisent le plus, pour démarrer vite.
+// Le catalogue : les services (Microsoft 365 a sa propre connexion en un clic, hors catalogue) que les PME suisses utilisent le plus, pour démarrer vite.
 // Nova ne promet pas d'adresse : chaque éditeur publie (ou non) son serveur MCP, et l'adresse se colle
 // depuis ses réglages. « Autre service » accepte n'importe quel serveur MCP distant.
 
@@ -10,7 +10,6 @@ export interface Fiche {
 }
 
 export const CATALOGUE: Fiche[] = [
-  { nom: "Microsoft 365", categorie: "Bureautique", description: "Outlook, Teams, OneDrive et SharePoint.", aide: "L'adresse MCP se trouve dans le centre d'administration Microsoft 365, avec un jeton d'application." },
   { nom: "Google Workspace", categorie: "Bureautique", description: "Gmail, Agenda, Drive et Docs.", aide: "L'adresse MCP et le jeton se créent dans la console d'administration Google." },
   { nom: "bexio", categorie: "Comptabilité", description: "Factures, clients, paiements et salaires.", aide: "Un jeton d'API se crée dans les réglages bexio ; colle aussi l'adresse MCP fournie." },
   { nom: "Abacus", categorie: "Comptabilité", description: "Comptabilité, débiteurs et créanciers.", aide: "Ton intégrateur Abacus te donne l'adresse MCP et le jeton." },

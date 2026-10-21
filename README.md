@@ -40,6 +40,7 @@ scripts/dev            # Nova Home en démonstration → http://127.0.0.1:5173
 | Vérifier une couleur d'accent | `node design/build.mjs check '#0A6CFF'` |
 | Exporter toute l'entreprise | `sudo -u nova-gateway nova export` |
 | Vérifier ou importer une archive | `nova verifier <archive> [--data <dossier>]` · `nova import <archive> --data <dossier>` |
+| Connecter Microsoft 365 (une fois par éditeur) | voir [`docs/MICROSOFT-365.md`](docs/MICROSOFT-365.md) |
 | Rapport du pilote | `scripts/rapport-pilote <data> <mise en service> <postes>` |
 | Mesurer les questions (clé d'API) | `scripts/bench-question` |
 
@@ -72,4 +73,4 @@ scripts/                     dev, bench-question, rapport-pilote
 
 ## Statut
 
-MVP construit, phases 0 à 3 (voir `ROADMAP.md`) : bureau Nova, bus MCP à 5 connecteurs (testés contre de vrais serveurs), agents Claude visibles avec autonomie choisie, questions en langage naturel, export et import sans perte, flotte du Hub, connecteurs ajoutés depuis l'interface (tout service MCP). Restent à faire : brancher une clé d'API Anthropic, installer le pilote et mesurer, et gérer des postes distants (Q-3).
+MVP construit, phases 0 à 3 (voir `ROADMAP.md`) : bureau Nova, bus MCP à 5 connecteurs (testés contre de vrais serveurs), agents Claude visibles avec autonomie choisie, questions en langage naturel, export et import sans perte, flotte du Hub, connecteurs ajoutés depuis l'interface (tout service MCP), Microsoft 365 en un clic (mail et agenda Outlook). Restent à faire : brancher une clé d'API Anthropic, installer le pilote et mesurer, et gérer des postes distants (Q-3).

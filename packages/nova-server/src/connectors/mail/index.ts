@@ -3,16 +3,20 @@
 //   maildir (défaut) : data/mail/, format ouvert ; démonstration et tests
 //   imap             : NOVA_MAIL_USER, NOVA_MAIL_PASSWORD, NOVA_MAIL_IMAP_HOST[, _PORT], NOVA_MAIL_SMTP_HOST[, _PORT], NOVA_MAIL_TLS,
 //                      NOVA_MAIL_FROM (adresse d'expédition, par défaut l'identifiant s'il est une adresse)
+//   microsoft        : Microsoft 365 par Graph, NOVA_MICROSOFT_TOKEN (connecté depuis l'écran Connecteurs)
 
 import { z } from "zod";
 import { RIGHT, SENSITIVE, dataDir, guard, ok, serve, server } from "../kit.js";
 import { address as bare, type MailBackend } from "./backend.js";
 import { imap } from "./imap.js";
 import { maildir } from "./maildir.js";
+import { microsoft } from "./microsoft.js";
 
 const env = process.env;
 const backend: MailBackend =
-  env.NOVA_MAIL_BACKEND === "imap"
+  env.NOVA_MAIL_BACKEND === "microsoft"
+    ? microsoft()
+    : env.NOVA_MAIL_BACKEND === "imap"
     ? imap({
         user: need("NOVA_MAIL_USER"),
         from: address(env.NOVA_MAIL_FROM ?? need("NOVA_MAIL_USER")),

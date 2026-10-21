@@ -44,6 +44,15 @@ in
         smtpPort = mkOption { type = types.port; default = 465; };
         tls = mkOption { type = types.bool; default = true; description = "TLS direct (993/465). Désactiver seulement en test."; };
       };
+      microsoft.clientId = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        example = "00000000-0000-0000-0000-000000000000";
+        description = ''
+          Identifiant de l'application Nova chez Microsoft (docs/MICROSOFT-365.md). Avec lui, le dirigeant
+          connecte Outlook (mail et agenda) en un clic depuis l'écran Connecteurs. Ce n'est pas un secret.
+        '';
+      };
       agenda = {
         backend = mkOption { type = types.enum [ "ics" "caldav" ]; default = "ics"; description = "ics : data/agenda/ ; caldav : le serveur d'agenda de l'entreprise."; };
         url = mkOption { type = types.str; default = ""; };
@@ -210,6 +219,8 @@ in
         NOVA_MODEL_QUESTION = cfg.models.question;
         NOVA_SKILLS = "${nova}/share/nova-verticals";
         NOVA_SECRETS = "/var/lib/nova/secrets";
+      } // lib.optionalAttrs (cfg.connectors.microsoft.clientId != null) {
+        NOVA_MICROSOFT_CLIENT_ID = cfg.connectors.microsoft.clientId;
       } // mailEnv // agendaEnv;
       path = [ pkgs.systemd ]; # systemctl : demandes à la flotte (polkit)
       serviceConfig = {

@@ -13,6 +13,7 @@
 //   NOVA_MAIL_*, NOVA_AGENDA_*   fournisseurs réels des connecteurs (voir connectors/)
 //   NOVA_SKILLS           dossier des métiers (verticals/), où vivent les skills des agents
 //   NOVA_SECRETS          dossier des secrets du Hub (jetons des connecteurs ajoutés), hors de data/
+//   NOVA_MICROSOFT_CLIENT_ID   identifiant de l'application Nova chez Microsoft (connexion Microsoft 365)
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
@@ -24,6 +25,7 @@ import { ask } from "./ask.js";
 import { Bus, Forbidden } from "./bus.js";
 import { CATALOGUE } from "./catalogue.js";
 import { Connecteurs, Inconnu, Invalide } from "./connecteurs.js";
+import { Microsoft365 } from "./microsoft.js";
 import { Conflict, Engine, NotFound } from "./engine.js";
 import { startDemo } from "./demo.js";
 import { loadSkill, type Skill } from "./skills.js";
@@ -40,9 +42,12 @@ const demo = env.NOVA_DEMO === "1";
 const journal = fileJournal(join(data, "journal"));
 
 const connectorEnv = Object.fromEntries(Object.entries(env).filter(([k]) => /^NOVA_(MAIL|AGENDA|TODAY)_?/.test(k)) as [string, string][]);
+const secrets = env.NOVA_SECRETS ?? join(data, "..", "secrets");
 const bus = new Bus(journal, { ...connectorEnv, NOVA_DATA: data });
+const microsoft = new Microsoft365(bus, journal, data, secrets, env.NOVA_MICROSOFT_CLIENT_ID || undefined);
+microsoft.configurer();
 await bus.start();
-const connecteurs = new Connecteurs(bus, cfg, data, env.NOVA_SECRETS ?? join(data, "..", "secrets"));
+const connecteurs = new Connecteurs(bus, cfg, data, secrets);
 await connecteurs.start();
 
 const acces = new Acces(data);
@@ -181,6 +186,9 @@ const routes: [string, RegExp, Handler][] = [
       journal.write({ qui: who, quoi: "connecteur.retirer", pourquoi: m[1] });
     },
   ],
+  ["GET", /^\/api\/microsoft$/, (_m, _b, who) => (dirigeant(who), microsoft.etat())],
+  ["POST", /^\/api\/microsoft\/connecter$/, (_m, _b, who) => (dirigeant(who), microsoft.connecter(who))],
+  ["POST", /^\/api\/microsoft\/deconnecter$/, (_m, _b, who) => (dirigeant(who), microsoft.deconnecter(who))],
   ["POST", /^\/api\/releves$/, (_m, body, who) => (dirigeant(who), saveReleve(data, body, who))],
   ["POST", /^\/api\/agents\/([\w-]+)\/reprendre$/, (m, _b, who) => engine.resume(m[1]!, who)],
   [
