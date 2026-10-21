@@ -1054,7 +1054,8 @@ dialog.palette {
   cursor: pointer;
 }
 .palette-option[aria-selected="true"] {
-  background: var(--accent);
+  /* Un cran plus foncé que l'accent : le texte blanc garde son contraste AA même pendant l'apparition. */
+  background: color-mix(in srgb, var(--accent) 86%, black);
   color: var(--on-accent);
 }
 .palette-vide {
