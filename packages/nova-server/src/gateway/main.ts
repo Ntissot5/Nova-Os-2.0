@@ -26,6 +26,7 @@ import { startDemo } from "./demo.js";
 import { loadSkill, type Skill } from "./skills.js";
 import { Triggers } from "./triggers.js";
 import { costs, readReleves, saveReleve } from "./mesures.js";
+import { Acces, cePoste, retourArriere } from "./flotte.js";
 
 const env = process.env;
 const cfg: CompanyConfig = JSON.parse(readFileSync(required("NOVA_COMPANY"), "utf8"));
@@ -39,6 +40,7 @@ const connectorEnv = Object.fromEntries(Object.entries(env).filter(([k]) => /^NO
 const bus = new Bus(journal, { ...connectorEnv, NOVA_DATA: data });
 await bus.start();
 
+const acces = new Acces(data);
 const engine = new Engine(cfg, journal, { demo, speed: Number(env.NOVA_DEMO_SPEED ?? 1), me: "", bus });
 const claude = env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN ? new Anthropic() : undefined;
 
@@ -101,6 +103,38 @@ const routes: [string, RegExp, Handler][] = [
   ],
   ["GET", /^\/api\/couts$/, (_m, _b, who) => (dirigeant(who), costs(join(data, "journal"), new Date()))],
   ["GET", /^\/api\/releves$/, () => readReleves(data)],
+  [
+    "GET",
+    /^\/api\/flotte$/,
+    (_m, _b, who) => (
+      dirigeant(who),
+      {
+        postes: [cePoste(cfg.version)],
+        personnes: Object.entries(cfg.people).map(([id, p]) => ({ id, nom: p.name, role: p.role, revoque: acces.estRevoque(id) })),
+      }
+    ),
+  ],
+  [
+    "POST",
+    /^\/api\/flotte\/retour$/,
+    async (_m, _b, who) => {
+      dirigeant(who);
+      journal.write({ qui: who, quoi: "flotte.retour", pourquoi: "Revenir à la version précédente du système" });
+      await retourArriere();
+    },
+  ],
+  [
+    "POST",
+    /^\/api\/flotte\/(revoquer|retablir)\/([\w-]+)$/,
+    async (m, _b, who) => {
+      dirigeant(who);
+      const person = m[2]!;
+      if (!cfg.people[person]) throw new NotFound("Personne inconnue.");
+      if (`humain:${person}` === who) throw new Conflict("Tu ne peux pas révoquer ton propre accès.");
+      journal.write({ qui: who, quoi: `flotte.${m[1]}`, pourquoi: person });
+      await (m[1] === "revoquer" ? acces.revoquer(person) : acces.retablir(person));
+    },
+  ],
   ["POST", /^\/api\/releves$/, (_m, body, who) => (dirigeant(who), saveReleve(data, body, who))],
   ["POST", /^\/api\/agents\/([\w-]+)\/reprendre$/, (m, _b, who) => engine.resume(m[1]!, who)],
   [
@@ -119,6 +153,7 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
     const person = String(req.headers["x-nova-person"] ?? "");
     if (!cfg.people[person]) return send(res, 401, { erreur: "Personne inconnue." });
+    if (acces.estRevoque(person)) return send(res, 403, { erreur: "Ton accès a été révoqué. Adresse-toi à la direction." });
     const who = `humain:${person}`;
 
     if (url.pathname === "/api/state") return send(res, 200, engine.state(name(person)));
@@ -127,7 +162,7 @@ const server = createServer(async (req, res) => {
 
     for (const [method, re, fn] of routes) {
       const m = url.pathname.match(re);
-      if (m && req.method === method) return send(res, 200, fn(m, method === "POST" ? await readJson(req) : undefined, who) ?? { ok: true });
+      if (m && req.method === method) return send(res, 200, (await fn(m, method === "POST" ? await readJson(req) : undefined, who)) ?? { ok: true });
     }
     send(res, 404, { erreur: "Route inconnue." });
   } catch (e) {

@@ -26,7 +26,7 @@
         modules = [
           self.nixosModules.nova
           (dir + "/company.nix")
-          { networking.hostName = "nova-${name}"; }
+          { networking.hostName = "nova-${name}"; nova.sourceDir = dir; nova.flakeLock = ./flake.lock; }
         ];
       };
     in
@@ -47,6 +47,7 @@
       checks.${system} = {
         unit = self.packages.${system}.nova;
         connecteurs-reels = import ./tests/connecteurs-reels.nix { inherit self pkgs; };
+        portabilite = import ./tests/portabilite.nix { inherit self pkgs; };
       } // lib.mapAttrs' (name: _: lib.nameValuePair "vm-${name}" (import ./tests/vm.nix { inherit self pkgs name; })) companies;
 
       devShells.${system}.default = pkgs.mkShell { packages = [ pkgs.nodejs_22 pkgs.prefetch-npm-deps ]; };

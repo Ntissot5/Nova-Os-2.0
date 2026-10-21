@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 
-export type Route = { name: "entreprise" } | { name: "agent"; id: string } | { name: "design" } | { name: "demander"; q?: string } | { name: "couts" };
+export type Route = { name: "entreprise" } | { name: "agent"; id: string } | { name: "design" } | { name: "demander"; q?: string } | { name: "couts" } | { name: "flotte" };
 
 function parse(hash: string): Route {
   const m = hash.match(/^#\/agents\/([\w-]+)/);
   if (m) return { name: "agent", id: m[1]! };
   if (hash.startsWith("#/design")) return { name: "design" };
   if (hash.startsWith("#/couts")) return { name: "couts" };
+  if (hash.startsWith("#/flotte")) return { name: "flotte" };
   if (hash.startsWith("#/demander")) return { name: "demander", q: new URLSearchParams(hash.split("?")[1] ?? "").get("q") ?? undefined };
   return { name: "entreprise" };
 }

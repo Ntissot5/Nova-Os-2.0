@@ -37,6 +37,7 @@ pkgs.testers.runNixOSTest {
           machine.succeed("test -f /var/lib/nova/data/.initialise")
           machine.succeed("sudo -u nova-gateway touch /var/lib/nova/data/compta/.essai")
           machine.fail("sudo -u nobody ls /var/lib/nova/data")
+          machine.fail("sudo -u ${user} ls /var/lib/nova/data")  # un employé passe par le gardien, jamais directement
 
       with subtest("les agents agissent à travers les connecteurs (brouillons réels)"):
           machine.wait_until_succeeds("ls /var/lib/nova/data/mail/.Brouillons/cur/ | grep -q nova", timeout=120)

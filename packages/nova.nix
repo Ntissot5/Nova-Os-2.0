@@ -1,6 +1,6 @@
 # Nova : nova-gateway (Hub), nova-daemon (poste), les connecteurs MCP et l'interface nova-home,
 # construits depuis le même dépôt npm. Les tests unitaires et de contrat tournent à la construction.
-{ lib, buildNpmPackage, importNpmLock, nodejs_22, makeWrapper }:
+{ lib, buildNpmPackage, importNpmLock, nodejs_22, makeWrapper, gnutar, gzip }:
 let
   root = ../.;
   src = lib.fileset.toSource {
@@ -9,7 +9,8 @@ let
       ../package.json
       ../package-lock.json
       ../design
-      ../companies/demo/data # données des tests de contrat
+      ../companies/demo # données et company.nix des tests (contrat, portabilité)
+      ../flake.lock # inclus dans les exports testés
       ../verticals # skills métier des agents
       ./nova-server/package.json
       ./nova-server/tsconfig.json
@@ -31,7 +32,7 @@ buildNpmPackage {
   npmDeps = importNpmLock { npmRoot = src; };
   npmConfigHook = importNpmLock.npmConfigHook;
 
-  nativeBuildInputs = [ makeWrapper ];
+  nativeBuildInputs = [ makeWrapper gnutar gzip ];
 
   doCheck = true;
   checkPhase = ''
@@ -53,6 +54,8 @@ buildNpmPackage {
     cp -r verticals $out/share/nova-verticals
     makeWrapper ${nodejs_22}/bin/node $out/bin/nova-gateway --add-flags $lib/packages/nova-server/dist/gateway/main.js
     makeWrapper ${nodejs_22}/bin/node $out/bin/nova-daemon --add-flags $lib/packages/nova-server/dist/daemon/main.js
+    makeWrapper ${nodejs_22}/bin/node $out/bin/nova --add-flags $lib/packages/nova-server/dist/cli/nova.js \
+      --prefix PATH : ${lib.makeBinPath [ gnutar gzip ]}
     runHook postInstall
   '';
 

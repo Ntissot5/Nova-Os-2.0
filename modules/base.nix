@@ -44,7 +44,8 @@ in
     users.users = lib.mapAttrs (_: p: {
       isNormalUser = true;
       description = p.name;
-      extraGroups = [ "networkmanager" "nova" ] ++ lib.optional (p.role == "dirigeant") "wheel";
+      # Pas dans le groupe « nova » : seules les données passées par le gardien sont accessibles.
+      extraGroups = [ "networkmanager" ] ++ lib.optional (p.role == "dirigeant") "wheel";
       hashedPassword = p.hashedPassword;
       # Démonstration uniquement : mot de passe « demo ». Une vraie entreprise déclare hashedPassword.
       password = if p.hashedPassword == null && cfg.demo then "demo" else null;

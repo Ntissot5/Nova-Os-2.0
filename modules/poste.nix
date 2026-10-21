@@ -88,7 +88,13 @@ let
   '';
 in
 {
-  config = {
+  options.nova.poste.enable = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = "Bureau graphique Nova sur cette machine. Désactivé pour un Hub seul (et dans certains tests).";
+  };
+
+  config = lib.mkIf cfg.poste.enable {
     services.displayManager.gdm.enable = true;
     services.desktopManager.gnome.enable = true;
     services.displayManager.autoLogin = lib.mkIf cfg.demo { enable = true; user = person; };

@@ -34,19 +34,25 @@ scripts/dev            # Nova Home en démonstration → http://127.0.0.1:5173
 | Test de la VM complète (KVM nécessaire) | `nix build .#checks.x86_64-linux.vm-demo -L` |
 | Image d'installation (clé USB, sans question) | `nix build .#installer-demo` |
 | Vérifier une couleur d'accent | `node design/build.mjs check '#0A6CFF'` |
+| Exporter toute l'entreprise | `sudo -u nova-gateway nova export` |
+| Vérifier ou importer une archive | `nova verifier <archive> [--data <dossier>]` · `nova import <archive> --data <dossier>` |
+| Rapport du pilote | `scripts/rapport-pilote <data> <mise en service> <postes>` |
+| Mesurer les questions (clé d'API) | `scripts/bench-question` |
 
 ## Le dépôt
 
 ```
-flake.nix                Point d'entrée : machines, paquets, image d'installation, tests
-companies/demo/          Une entreprise : company.nix + data/
-modules/                 Modules NixOS nova.* : base, disque, hub, poste (bureau)
-packages/nova-daemon/    API locale du poste : moteur d'agents, autonomie, journal
-packages/nova-home/      Interface : espace Entreprise, pages d'agents
-packages/nova-shell/     Extension GNOME : la barre du haut Nova
-packages/installer.nix   Image d'installation automatique
-design/                  Tokens du système de design (source unique)
-tests/                   Test VM de bout en bout, test de l'interface
+flake.nix                    Point d'entrée : machines, paquets, image d'installation, tests
+companies/demo/              Une entreprise : company.nix + data/ (formats ouverts)
+modules/                     Modules NixOS nova.* : base, disque, hub (gardien, flotte, sauvegarde), poste (bureau)
+packages/nova-server/        nova-gateway (Hub), nova-daemon (poste), connecteurs MCP, commande nova
+packages/nova-home/          Interface : espace Entreprise, agents, Demander, coûts, flotte
+packages/nova-shell/         Extension GNOME : la barre du haut Nova
+packages/installer.nix       Image d'installation automatique
+verticals/gerance/skills/    Le métier des agents de gérance, en Markdown
+design/                      Tokens du système de design (source unique)
+tests/                       Tests VM (poste, connecteurs réels, portabilité), test de l'interface
+scripts/                     dev, bench-question, rapport-pilote
 ```
 
 ## Documents
@@ -58,7 +64,8 @@ tests/                   Test VM de bout en bout, test de l'interface
 | [`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md) | Tokens, matière verre, composants, règles d'écriture |
 | [`ROADMAP.md`](ROADMAP.md) | Les phases du MVP et leurs métriques |
 | [`DECISIONS.md`](DECISIONS.md) | Les choix tranchés et les questions ouvertes |
+| [`EXPORT-SPEC.md`](EXPORT-SPEC.md) | Le format d'export : toute l'entreprise, lisible sans Nova |
 
 ## Statut
 
-Phase 0 — Fondations. Les agents de la démonstration jouent des scénarios réalistes sur le vrai moteur (autonomie, validations, délais d'annulation, journal) ; ils se brancheront sur les vrais connecteurs en Phase 1.
+MVP construit, phases 0 à 3 (voir `ROADMAP.md`) : bureau Nova, bus MCP à 5 connecteurs (testés contre de vrais serveurs), agents Claude visibles avec autonomie choisie, questions en langage naturel, export et import sans perte, flotte du Hub. Restent à faire : brancher une clé d'API Anthropic, installer le pilote et mesurer, et gérer des postes distants (Q-3).
