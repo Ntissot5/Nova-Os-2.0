@@ -42,15 +42,17 @@ scripts/dev            # Nova Home en démonstration → http://127.0.0.1:5173
 ## Le dépôt
 
 ```
-flake.nix                Point d'entrée : machines, paquets, image d'installation, tests
-companies/demo/          Une entreprise : company.nix + data/
-modules/                 Modules NixOS nova.* : base, disque, hub, poste (bureau)
-packages/nova-daemon/    API locale du poste : moteur d'agents, autonomie, journal
-packages/nova-home/      Interface : espace Entreprise, pages d'agents
-packages/nova-shell/     Extension GNOME : la barre du haut Nova
-packages/installer.nix   Image d'installation automatique
-design/                  Tokens du système de design (source unique)
-tests/                   Test VM de bout en bout, test de l'interface
+flake.nix                    Point d'entrée : machines, paquets, image d'installation, tests
+companies/demo/              Une entreprise : company.nix + data/ (formats ouverts)
+modules/                     Modules NixOS nova.* : base, disque, hub (gardien, flotte, sauvegarde), poste (bureau)
+packages/nova-server/        nova-gateway (Hub), nova-daemon (poste), connecteurs MCP, commande nova
+packages/nova-home/          Interface : espace Entreprise, agents, Demander, coûts, flotte
+packages/nova-shell/         Extension GNOME : la barre du haut Nova
+packages/installer.nix       Image d'installation automatique
+verticals/gerance/skills/    Le métier des agents de gérance, en Markdown
+design/                      Tokens du système de design (source unique)
+tests/                       Tests VM (poste, connecteurs réels, portabilité), test de l'interface
+scripts/                     dev, bench-question, rapport-pilote
 ```
 
 ## Documents
@@ -66,4 +68,4 @@ tests/                   Test VM de bout en bout, test de l'interface
 
 ## Statut
 
-Phase 0 — Fondations. Les agents de la démonstration jouent des scénarios réalistes sur le vrai moteur (autonomie, validations, délais d'annulation, journal) ; ils se brancheront sur les vrais connecteurs en Phase 1.
+MVP construit, phases 0 à 3 (voir `ROADMAP.md`) : bureau Nova, bus MCP à 5 connecteurs (testés contre de vrais serveurs), agents Claude visibles avec autonomie choisie, questions en langage naturel, export et import sans perte, flotte du Hub. Restent à faire : brancher une clé d'API Anthropic, installer le pilote et mesurer, et gérer des postes distants (Q-3).
