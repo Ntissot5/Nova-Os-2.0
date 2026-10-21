@@ -41,7 +41,7 @@ Règle : une couche ne parle qu'à la couche directement voisine, via une interf
 - **`company.nix`** est un module NixOS *déclaratif et sans code* : il ne fait que donner des valeurs aux options `nova.*` (nom, couleur d'accent, employés, connecteurs, agents, budgets). Tout ce qui n'y figure pas a une valeur par défaut décidée par Nova.
 - **`data/`** contient toutes les données vivantes, en formats ouverts (voir §5).
 - **Version épinglée** : `company.nix` déclare `nova.version` ; le `flake.lock` de l'entreprise fige nixpkgs et Nova. Même dossier → même machine, bit pour bit.
-- **Mises à jour atomiques** : chaque mise à jour est une nouvelle génération NixOS ; rollback = génération précédente, depuis le dashboard ou le menu de démarrage.
+- **Mises à jour atomiques** : chaque mise à jour est une nouvelle génération NixOS ; rollback = génération précédente, depuis l'espace Entreprise ou le menu de démarrage.
 - **Installation** : une image d'installation (ISO/clé USB) contient `disko` + le dossier de l'entreprise ; elle partitionne, chiffre (LUKS2), installe et redémarre sans question (D-006).
 - **Cache binaire** obligatoire (Attic auto-hébergé) : sans lui, l'installation compile pendant des heures (D-007).
 - **Secrets** : `sops-nix` + clés `age`. Les secrets sont chiffrés *dans* `data/secrets/`, donc exportés avec le reste, illisibles sans la clé de l'entreprise (D-008).
@@ -52,7 +52,7 @@ Règle : une couche ne parle qu'à la couche directement voisine, via une interf
 - **`nova-gateway`** est le seul point d'entrée du bus. Il :
   1. authentifie l'appelant (agent ou humain, jeton OIDC Authentik) ;
   2. applique les **permissions** déclarées dans `company.nix` (quel agent a accès à quels outils de quels connecteurs) ;
-  3. **intercepte toute action irréversible** : un outil marqué `destructiveHint` (annotation MCP standard) ou listé comme irréversible (envoi, paiement, suppression) n'est pas exécuté ; il devient une **demande de validation** dans le dashboard ;
+  3. **intercepte toute action irréversible** : un outil marqué `destructiveHint` (annotation MCP standard) ou listé comme irréversible (envoi, paiement, suppression) n'est pas exécuté ; il devient une **demande de validation** dans l'espace Entreprise ;
   4. **journalise** chaque appel (§6).
 - Ajouter un logiciel = ajouter un serveur MCP et une ligne dans `company.nix`. Jamais d'intégration sur mesure dans le shell ou dans un agent.
 - Transport : MCP « Streamable HTTP » sur socket Unix locale au Hub, exposé aux postes via le gateway en HTTPS + OIDC.
@@ -126,7 +126,7 @@ Employé → barre du haut (`/`) → nova-daemon → Claude (agent « assistant 
 Agent → `mail.send` (destructif) → nova-gateway **met en attente** → pastille ② sur l'agent Relances dans le dock + carte « Relance prête pour M. Dupont (2 loyers) » dans l'espace Entreprise → le dirigeant valide (clavier : `Entrée`) → le gateway exécute → journal.
 
 **c. Mise à jour d'entreprise**
-Modifier `company.nix` (ou un clic dans le dashboard qui le modifie) → build sur le Hub → publication dans le cache → chaque poste bascule atomiquement à la nouvelle génération → rollback possible.
+Modifier `company.nix` (ou un clic dans l'espace Entreprise qui le modifie) → build sur le Hub → publication dans le cache → chaque poste bascule atomiquement à la nouvelle génération → rollback possible.
 
 **d. Export / import (Phase 3)**
 `nova export` → archive de `company.nix` + `flake.lock` + `data/` (secrets restent chiffrés) → `nova import` sur une machine vierge → même entreprise, zéro perte.
@@ -154,7 +154,7 @@ Une ligne JSONL par action, lisible par un humain :
 {"ts":"2026-10-21T08:02:11Z","qui":"agent:relances-loyers","quoi":"mail.send","pourquoi":"Loyer d'octobre impayé (J+10), règle regles.md#relances","statut":"en_attente_validation","tokens":{"in":3120,"out":412},"coutCHF":0.021,"resultat":null}
 ```
 
-Le dashboard lit ces fichiers ; aucune donnée d'observabilité n'existe ailleurs. Les coûts (par agent, par poste, par mois) sont des agrégats de ce journal.
+L'espace Entreprise lit ces fichiers ; aucune donnée d'observabilité n'existe ailleurs. Les coûts (par agent, par poste, par mois) sont des agrégats de ce journal.
 
 ## 7. Sécurité par défaut
 
