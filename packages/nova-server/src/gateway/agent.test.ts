@@ -157,3 +157,33 @@ test("reprendre la main arrête l'agent : aucune action n'est proposée", async 
   assert.equal(task.status, "arretee");
   assert.equal(task.action, undefined);
 });
+
+test("un agent créé dans l'Atelier travaille aussitôt, avec ses consignes et les garde-fous de toujours", async () => {
+  const { Atelier } = await import("./atelier.js");
+  const vivant = structuredClone(cfg);
+  const atelier = new Atelier(vivant, data, () => bus.droitsDisponibles(), NOW);
+  const engine = new Engine(vivant, journal, { demo: false, speed: 1, me: "Noa", bus, now: NOW });
+  const skills = new Map<string, ReturnType<typeof loadSkill>>();
+  const create: Create = async (p) => {
+    if (p.messages.length === 1) {
+      assert.ok(String(p.system).includes("Paie la facture Swisscom dès qu'elle est conforme."), "les consignes écrites dans l'Atelier sont dans le prompt");
+      assert.ok(!(p.tools ?? []).some((t) => "name" in t && t.name === "mail_envoyer"), "pas d'outil hors des sources choisies");
+      return reply("tool_use", [use("a", "compta_payer", { facture: "SW-88412" })]);
+    }
+    return reply("tool_use", [use("b", "terminer", { resultat: "Facture Swisscom prête au paiement.", regle: "Consignes de l'Atelier.", sources: ["Facture SW-88412"] })]);
+  };
+  const t = new Triggers({ engine, bus, journal, create, cfg: vivant, skills, data, memory: () => "", now: NOW });
+  atelier.brancher({ ajouterAgent: (id, a) => engine.ajouterAgent(id, a), retirerAgent: (id) => engine.retirerAgent(id), skills, droits: () => {} });
+  engine.on("change", () => t.drain());
+
+  atelier.enregistrerAgent(
+    { name: "Fournisseurs", consignes: "Paie la facture Swisscom dès qu'elle est conforme.", declencheur: "manuel", sources: { compta: ["read", "payment"] }, autonomy: "autonome" },
+    "humain:noa",
+  );
+  assert.ok(engine.state().agents.some((a) => a.id === "fournisseurs"));
+  t.runNow("fournisseurs");
+  await until("décision prise", () => engine.state().tasks.some((x) => x.agentId === "fournisseurs" && x.status !== "en-cours"));
+  const task = engine.state().tasks.find((x) => x.agentId === "fournisseurs")!;
+  assert.equal(task.status, "differe", "autonome : le paiement de 89.90 CHF part, mais seulement après le délai d'annulation");
+  assert.equal(task.action?.amountCHF, 89.9);
+});

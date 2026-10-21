@@ -1,4 +1,5 @@
-// Le cadre de Nova Home : le fond vivant et le rail d'icônes flottant (Entreprise, puis chaque agent).
+// Le cadre de Nova Home : le fond vivant et le rail d'icônes flottant (Entreprise, Demander, les départements,
+// puis pour le dirigeant l'Atelier et les Réglages).
 
 import type { ReactNode } from "react";
 import type { State } from "../../../nova-server/src/core/types";
@@ -31,11 +32,23 @@ const Search = () => (
   </svg>
 );
 
-const Plug = () => (
+const Shapes = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0zM12 17v5" />
+    <rect x="3" y="3" width="7" height="7" rx="2" />
+    <circle cx="17.5" cy="6.5" r="3.5" />
+    <path d="M6.5 14 10 20H3z" />
+    <path d="M17.5 14v7M14 17.5h7" />
   </svg>
 );
+
+const Gear = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+  </svg>
+);
+
+const REGLAGES = new Set(["reglages", "connecteurs", "couts", "flotte"]);
 
 export function Rail({ state, route }: { state: State | null; route: Route }) {
   const moi = useMoi();
@@ -52,13 +65,6 @@ export function Rail({ state, route }: { state: State | null; route: Route }) {
             <Search />
           </a>
         </li>
-        {moi.role === "dirigeant" && (
-          <li>
-            <a href="#/connecteurs" aria-current={route.name === "connecteurs" ? "page" : undefined} aria-label="Connecteurs">
-              <Plug />
-            </a>
-          </li>
-        )}
         <li className="sep" aria-hidden="true" />
         {state?.departements?.length
           ? state.departements.map((d) => {
@@ -90,6 +96,21 @@ export function Rail({ state, route }: { state: State | null; route: Route }) {
             </a>
           </li>
         ))}
+        {moi.role === "dirigeant" && (
+          <>
+            <li className="sep" aria-hidden="true" />
+            <li>
+              <a href="#/atelier" aria-current={route.name === "atelier" ? "page" : undefined} aria-label="Atelier : construire ton entreprise">
+                <Shapes />
+              </a>
+            </li>
+            <li>
+              <a href="#/reglages" aria-current={REGLAGES.has(route.name) ? "page" : undefined} aria-label="Réglages">
+                <Gear />
+              </a>
+            </li>
+          </>
+        )}
       </ul>
     </nav>
   );

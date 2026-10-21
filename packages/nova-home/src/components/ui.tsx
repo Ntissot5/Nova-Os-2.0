@@ -1,7 +1,7 @@
 // Les composants du système de design (DESIGN-SYSTEM.md §3). Un besoin non couvert se résout d'abord
 // en composant ceux-ci.
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import type { AgentState, Autonomy, Task, Why } from "../../../nova-server/src/core/types";
 import { act } from "../api";
 import { countdown } from "../format";
@@ -123,10 +123,10 @@ const AUTONOMY_SENTENCE: Record<Autonomy, string> = {
   autonome: "Tout part seul, avec un délai pour annuler. Tu reçois un résumé chaque soir.",
 };
 
-export function AutonomyPicker({ agent, onChange }: { agent: AgentState; onChange?: (l: Autonomy) => void }) {
+export function AutonomyPicker({ agent, onChange, lecture }: { agent: AgentState; onChange?: (l: Autonomy) => void; lecture?: boolean }) {
   const levels = Object.keys(AUTONOMY_LABEL) as Autonomy[];
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
-  const set = (l: Autonomy) => (onChange ? onChange(l) : act(`agents/${agent.id}/autonomie`, { level: l }));
+  const set = (l: Autonomy) => (lecture ? undefined : onChange ? onChange(l) : act(`agents/${agent.id}/autonomie`, { level: l }));
   return (
     <div className="stack autonomy" style={{ gap: "var(--space-2)" }}>
       <div className="segmented" role="radiogroup" aria-label={`Autonomie de ${agent.name}`}>
@@ -140,6 +140,8 @@ export function AutonomyPicker({ agent, onChange }: { agent: AgentState; onChang
               }}
               role="radio"
               aria-checked={on}
+              aria-disabled={lecture || undefined}
+              disabled={lecture && !on}
               tabIndex={on ? 0 : -1}
               onClick={() => set(l)}
               onKeyDown={(e) => {
@@ -157,6 +159,7 @@ export function AutonomyPicker({ agent, onChange }: { agent: AgentState; onChang
         })}
       </div>
       <p className="muted">{AUTONOMY_SENTENCE[agent.autonomy]}</p>
+      {lecture && <p className="caption">C'est la direction qui règle l'autonomie des agents.</p>}
       <p className="caption">Toujours actifs : tout envoi reste annulable 2 minutes, rien n'est vraiment effacé, et un gros paiement attend toujours un humain.</p>
     </div>
   );
@@ -259,4 +262,22 @@ export function useReplay(task: Task) {
     steps: shown === null ? task.steps : task.steps.slice(0, shown),
     play: () => setShown(0),
   };
+}
+
+/**
+ * Ouvre un <dialog> en modal dès qu'il est monté, et prévient quand il se ferme, quelle qu'en soit la raison
+ * (bouton, Échap, après une action). On écoute l'événement natif : sans cela, l'écran croit le dialogue
+ * encore ouvert et le suivant ne s'affiche plus.
+ */
+export function useDialogue(ref: RefObject<HTMLDialogElement | null>, onClose: () => void) {
+  const fermer = useRef(onClose);
+  fermer.current = onClose;
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (!d.open) d.showModal();
+    const on = () => fermer.current();
+    d.addEventListener("close", on);
+    return () => d.removeEventListener("close", on);
+  }, [ref]);
 }

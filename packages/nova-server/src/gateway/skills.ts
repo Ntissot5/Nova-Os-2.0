@@ -19,7 +19,11 @@ export function loadSkill(dir: string, id: string): Skill {
   const [vertical, name] = id.split("/");
   const file = join(dir, vertical ?? "", "skills", `${name}.md`);
   if (!vertical || !name || !existsSync(file)) throw new Error(`Skill introuvable : ${id} (${file})`);
-  const text = readFileSync(file, "utf8");
+  return parseSkill(id, readFileSync(file, "utf8"));
+}
+
+/** Un skill depuis son texte (en-tête puis consignes en Markdown). */
+export function parseSkill(id: string, text: string): Skill {
   const m = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   const head = Object.fromEntries((m?.[1] ?? "").split("\n").map((l) => l.split(/:\s*/, 2).map((x) => x.trim()) as [string, string]));
   const decl = head.declencheur ?? "manuel";

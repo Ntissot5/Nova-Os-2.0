@@ -8,9 +8,12 @@
 2. **Un écran = une intention.** Un écran répond à une seule question.
 3. **Du verre sur un fond vivant.** Les contenus flottent dans des tuiles de verre dépoli posées sur un fond doux et coloré, sur le bureau comme dans Nova Home. La hiérarchie vient de l'espace, de la graisse et de l'opacité du verre, jamais de bordures, de séparateurs ou d'icônes décoratives.
 4. **Le texte est l'interface.** Des phrases complètes et humaines plutôt que des tableaux bruts.
-5. **Zéro paramètre exposé.** Tout se décide dans `company.nix`. L'utilisateur final ne règle rien.
+5. **Zéro paramètre exposé aux employés.** Le dirigeant construit l'entreprise dans l'Atelier, en phrases (D-031) ; l'installation pose la base dans `company.nix`. Un employé ne règle rien : il travaille.
 6. **Accessible d'abord.** Contraste AA minimum, clavier complet, lecteur d'écran, mouvement réduit respecté.
 7. **Rien d'invisible.** Tout ce qu'un agent fait se voit, en direct, en phrases ; chaque action répond à « Pourquoi ? ».
+8. **Une seule liste de choses à faire.** Validations, dossiers reçus, envois sur le point de partir : tout ce qui attend la personne est au même endroit, et rien d'autre n'y est (D-032).
+9. **Tout au clavier.** ⌘K va n'importe où et fait n'importe quoi ; une phrase qui ne correspond à rien devient une question. On n'apprend pas de menus.
+10. **Le rare se range.** Ce qu'on règle de temps en temps (connecteurs, coûts, flotte, mesure) vit dans Réglages, pas sur l'écran de travail.
 
 ## 2. Tokens
 

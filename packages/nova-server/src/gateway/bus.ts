@@ -173,6 +173,13 @@ export class Bus {
     return [...this.clients.keys()].map((id) => ({ id, outils: n.get(id) ?? 0 }));
   }
 
+  /** Chaque source branchée et les droits que ses outils demandent (« read », « send »…), pour l'Atelier. */
+  droitsDisponibles() {
+    const d = new Map<string, Set<string>>();
+    for (const t of this.catalog.values()) (d.get(t.connector) ?? d.set(t.connector, new Set()).get(t.connector)!).add(t.right);
+    return [...d].map(([id, s]) => ({ id, droits: [...s].sort() }));
+  }
+
   /** Lecture sur toutes les sources branchées : ce qu'a une personne qui pose une question. */
   readAll(): Rights {
     return Object.fromEntries([...this.clients.keys()].map((c) => [c, ["read"]]));
