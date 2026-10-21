@@ -18,6 +18,7 @@ export interface AgentConfig {
   description: string;
   autonomy: Autonomy;
   connectors: Record<string, string[]>;
+  skills?: string[]; // ex. « gerance/relances » : verticals/gerance/skills/relances.md
 }
 
 /** Un appel d'outil sur le bus MCP. */

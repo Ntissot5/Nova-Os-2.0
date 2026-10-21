@@ -4,7 +4,7 @@
 import { EventEmitter } from "node:events";
 import { decide, suggestion } from "../core/autonomy.js";
 import type { Journal } from "../core/journal.js";
-import type { Action, AgentState, Approval, Autonomy, CompanyConfig, State, Task, ToolCall } from "../core/types.js";
+import type { Action, AgentState, Approval, Autonomy, CompanyConfig, State, Task, ToolCall, Why } from "../core/types.js";
 import type { Bus, Rights } from "./bus.js";
 
 export interface Scenario {
@@ -22,12 +22,30 @@ export interface Scenario {
   minutesSaved: number;
 }
 
+/** Ce qu'un agent vivant (agent.ts) peut faire pendant qu'il travaille. */
+export interface LiveContext {
+  step(text: string, app?: string): void;
+  title(text: string): void;
+  doc(title: string, body: string): void;
+  signal: AbortSignal;
+}
+
+/** Ce qu'un agent vivant rend : les actions sensibles proposées et l'explication de son travail. */
+export interface LiveResult {
+  calls: ToolCall[];
+  summary?: string;
+  outcome: string;
+  why: Why;
+  minutesSaved: number;
+}
+
 const MAX_TASKS = 200;
 
 export class Engine extends EventEmitter {
   private tasks: Task[] = [];
   private agents = new Map<string, AgentState>();
   private running = new Map<string, NodeJS.Timeout>();
+  private aborts = new Map<string, AbortController>();
   private seq = 0;
 
   constructor(
@@ -126,6 +144,92 @@ export class Engine extends EventEmitter {
     return task;
   }
 
+  /** Fait travailler un agent vivant : ses étapes s'affichent au fil de l'eau, ses actions passent par l'autonomie. */
+  run(agentId: string, title: string, work: (ctx: LiveContext) => Promise<LiveResult>, minutesSaved = 0): Task {
+    const agent = this.agent(agentId);
+    const task: Task = { id: this.nextId(), agentId, title, status: "en-cours", startedAt: this.now().toISOString(), steps: [], minutesSaved };
+    this.tasks.unshift(task);
+    agent.status = "travaille";
+    const abort = new AbortController();
+    this.aborts.set(task.id, abort);
+    this.journal.write({ qui: `agent:${agentId}`, quoi: "tache.debut", pourquoi: title, tache: task.id });
+    this.changed();
+
+    const ctx: LiveContext = {
+      signal: abort.signal,
+      step: (text, app) => {
+        if (task.status !== "en-cours") return;
+        task.steps.push({ at: this.now().toISOString(), text, app });
+        agent.appsInUse = app ? [app] : [];
+        this.journal.write({ qui: `agent:${agentId}`, quoi: "etape", pourquoi: text, app, tache: task.id });
+        this.changed();
+      },
+      title: (t) => {
+        task.title = t;
+        this.changed();
+      },
+      doc: (t, body) => {
+        if (task.status !== "en-cours") return;
+        task.doc = { title: t, body };
+        this.changed();
+      },
+    };
+
+    void work(ctx).then(
+      async (r) => {
+        this.aborts.delete(task.id);
+        if (task.status !== "en-cours") return; // arrêtée entre-temps
+        agent.appsInUse = [];
+        if (agent.status === "travaille") agent.status = "disponible";
+        task.minutesSaved = r.minutesSaved;
+        if (r.calls.length === 0) return this.complete(task, r.outcome);
+        try {
+          await this.propose(task, { tool: r.calls[0]!.tool, calls: r.calls, summary: r.summary ?? "", sensitive: true, why: r.why }, r.outcome);
+        } catch (e) {
+          this.fail(task, e);
+        }
+      },
+      (e) => {
+        this.aborts.delete(task.id);
+        agent.appsInUse = [];
+        if (agent.status === "travaille") agent.status = "disponible";
+        if (task.status === "en-cours") this.fail(task, e);
+      },
+    );
+    return task;
+  }
+
+  /** Une action proposée : aperçu par les connecteurs, puis décision d'autonomie. */
+  private async propose(task: Task, base: Action, outcome: string) {
+    const bus = this.opts.bus;
+    let action = base;
+    if (bus && base.calls?.length) {
+      const who = `agent:${task.agentId}`;
+      const previews = await Promise.all(base.calls.map((c) => bus.preview(who, this.rights(task.agentId), c.tool, c.args)));
+      action = {
+        ...base,
+        summary: base.summary || previews.map((p) => p.summary).join(" ; "),
+        sensitive: base.calls.some((c) => bus.info(c.tool).sensitive),
+        amountCHF: previews.reduce((s, p) => s + (p.amountCHF ?? 0), 0) || undefined,
+        recipients: previews.reduce((s, p) => s + (p.recipients ?? 0), 0) || undefined,
+        unknownRecipient: previews.some((p) => p.unknownRecipient),
+      };
+    }
+    const agent = this.agent(task.agentId);
+    task.action = action;
+    task.outcome = outcome;
+    const d = decide(action, agent.autonomy, this.cfg.limits);
+    task.decision = d;
+    this.journal.write({ qui: `agent:${task.agentId}`, quoi: action.tool, pourquoi: action.why.rule, decision: d, tache: task.id });
+    if (d.kind === "validation") task.status = "en-attente";
+    else if (d.kind === "differe") {
+      task.status = "differe";
+      task.executeAt = new Date(this.now().getTime() + (d.seconds * 1000) / this.opts.speed).toISOString();
+    } else return this.complete(task, outcome);
+    this.recount();
+    this.changed();
+  }
+
   private rights(agentId: string): Rights {
     return this.cfg.agents[agentId]?.connectors ?? {};
   }
@@ -141,38 +245,19 @@ export class Engine extends EventEmitter {
     let action: Action = sc.action;
     if (sc.prepare && this.opts.bus) {
       const bus = this.opts.bus;
-      const who = `agent:${task.agentId}`;
       try {
-        const calls = await sc.prepare((tool, args) => bus.call(who, this.rights(task.agentId), tool, args, sc.title), task);
+        const calls = await sc.prepare((tool, args) => bus.call(`agent:${task.agentId}`, this.rights(task.agentId), tool, args, sc.title), task);
         if (calls.length === 0) return this.complete(task, "Rien à faire : déjà traité.");
-        const previews = await Promise.all(calls.map((c) => bus.preview(who, this.rights(task.agentId), c.tool, c.args)));
-        action = {
-          ...sc.action,
-          tool: calls[0]?.tool ?? sc.action.tool,
-          calls,
-          summary: sc.action.summary || previews.map((p) => p.summary).join(" ; "),
-          sensitive: calls.some((c) => bus.info(c.tool).sensitive),
-          amountCHF: previews.reduce((s, p) => s + (p.amountCHF ?? 0), 0) || undefined,
-          recipients: previews.reduce((s, p) => s + (p.recipients ?? 0), 0) || undefined,
-          unknownRecipient: previews.some((p) => p.unknownRecipient),
-        };
+        action = { ...sc.action, tool: calls[0]?.tool ?? sc.action.tool, calls };
       } catch (e) {
         return this.fail(task, e);
       }
     }
-
-    task.action = action;
-    task.outcome = sc.outcome;
-    const d = decide(action, agent.autonomy, this.cfg.limits);
-    task.decision = d;
-    this.journal.write({ qui: `agent:${task.agentId}`, quoi: action.tool, pourquoi: action.why.rule, decision: d, tache: task.id });
-    if (d.kind === "validation") task.status = "en-attente";
-    else if (d.kind === "differe") {
-      task.status = "differe";
-      task.executeAt = new Date(this.now().getTime() + (d.seconds * 1000) / this.opts.speed).toISOString();
-    } else return this.complete(task, sc.outcome);
-    this.recount();
-    this.changed();
+    try {
+      await this.propose(task, action, sc.outcome);
+    } catch (e) {
+      this.fail(task, e);
+    }
   }
 
   /** L'action part : ses appels sont exécutés sur le bus, la décision d'autonomie ayant été prise. */
@@ -189,7 +274,7 @@ export class Engine extends EventEmitter {
     task.status = "terminee";
     task.outcome = outcome;
     task.endedAt = this.now().toISOString();
-    this.journal.write({ qui: `agent:${task.agentId}`, quoi: "tache.fin", resultat: outcome, tache: task.id });
+    this.journal.write({ qui: `agent:${task.agentId}`, quoi: "tache.fin", resultat: outcome, minutes: task.minutesSaved, tache: task.id });
     this.recount();
     this.changed();
   }
@@ -239,6 +324,8 @@ export class Engine extends EventEmitter {
     if (t.status !== "en-cours") throw new Conflict("Cette tâche n'est plus en cours.");
     clearTimeout(this.running.get(t.id));
     this.running.delete(t.id);
+    this.aborts.get(t.id)?.abort();
+    this.aborts.delete(t.id);
     const a = this.agent(t.agentId);
     a.appsInUse = [];
     if (a.status === "travaille") a.status = "disponible";

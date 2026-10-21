@@ -101,6 +101,7 @@ in
         NOVA_DATA = "/var/lib/nova/data";
         NOVA_DEMO = if cfg.demo then "1" else "0";
         NOVA_MODEL_QUESTION = cfg.models.question;
+        NOVA_SKILLS = "${nova}/share/nova-verticals";
       } // mailEnv // agendaEnv;
       serviceConfig = {
         ExecStart = lib.getExe' nova "nova-gateway";

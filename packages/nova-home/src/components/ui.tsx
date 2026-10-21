@@ -222,13 +222,28 @@ export function WhyButton({ why, reason }: { why: Why; reason?: string }) {
 
 /** Le document qu'un agent écrit, qui se remplit sous les yeux de l'utilisateur. */
 export function Doc({ title, body, writing }: { title: string; body: string; writing: boolean }) {
+  const shown = useTypewriter(body, writing);
   return (
     <div className="doc" aria-label={`Document : ${title}`}>
       <p className="caption doc-title">{title}</p>
-      {body}
+      {shown}
       {writing && <span className="caret" aria-hidden="true" />}
     </div>
   );
+}
+
+/** Le texte d'un agent arrive d'un bloc : on le déroule à vitesse de lecture, sauf si le mouvement est réduit. */
+function useTypewriter(text: string, active: boolean) {
+  const [n, setN] = useState(active ? 0 : text.length);
+  const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  useEffect(() => {
+    if (!active || reduced) return setN(text.length);
+    if (n > text.length) return setN(0);
+    if (n === text.length) return;
+    const t = setTimeout(() => setN((x) => Math.min(text.length, x + 3)), 16);
+    return () => clearTimeout(t);
+  }, [text, n, active, reduced]);
+  return text.slice(0, n);
 }
 
 /** Rejoue les étapes d'une tâche passée, une à une. */

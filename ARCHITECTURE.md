@@ -101,7 +101,8 @@ nova.agents.relances-loyers = {
 
 - Chaque agent tourne dans son propre service systemd, avec son propre utilisateur, et ne voit le monde **que** via `nova-gateway`. Pas d'accès direct au disque ni au réseau.
 - **Usage illimité pour le client, coût maîtrisé pour Nova** (D-016) : le client paie un forfait par poste, sans compteur. Le gateway compte les jetons de chaque appel et choisit le modèle adapté à chaque tâche (petit modèle pour trier, grand modèle pour rédiger ou raisonner), avec cache de prompts. Le coût réel par poste est suivi par l'opérateur Nova ; un usage anormal déclenche une alerte, jamais un blocage silencieux.
-- **Skills métier** : dossiers Markdown versionnés (`verticals/<métier>/skills/`). Un vertical = des skills + une liste de connecteurs.
+- **Skills métier** : fichiers Markdown versionnés (`verticals/<métier>/skills/<nom>.md`), avec un court en-tête : déclencheur (`mail`, `quotidien HH:MM`), modèle de travail, modèle de tri, minutes humaines estimées par action. Un vertical = des skills + une liste de connecteurs.
+- **Déroulé d'un agent (Phase 2)** : un déclencheur (nouveau mail, tournée quotidienne, « Lancer maintenant ») ouvre une tâche ; pour un mail, Claude Haiku trie d'abord (agir ou non) ; sinon Claude Sonnet travaille avec les outils accordés, chaque appel devient une étape visible, chaque brouillon s'affiche ; les outils sensibles sont *proposés* (aperçu du connecteur), puis le moteur décide (validation, délai d'annulation) ; l'agent termine en citant la règle suivie et ses sources. État des déclencheurs en clair dans `data/agents/`.
 - **Mémoire d'entreprise** : `data/memory/` (Markdown : vocabulaire, contacts, règles). Lecture par tous les agents autorisés ; écriture uniquement via un outil MCP `memory.propose`, validée par un humain.
 - **Scénarios rejouables** : chaque agent a un scénario de bout en bout (entrées enregistrées → sorties attendues) exécuté en CI contre des connecteurs simulés.
 

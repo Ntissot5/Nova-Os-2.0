@@ -100,7 +100,7 @@ in
       default = builtins.toJSON {
         inherit (config.nova) version company brand apps limits;
         people = lib.mapAttrs (_: p: { inherit (p) name role; }) config.nova.people;
-        agents = lib.mapAttrs (_: a: { inherit (a) name description autonomy connectors; }) config.nova.agents;
+        agents = lib.mapAttrs (_: a: { inherit (a) name description autonomy connectors skills; }) config.nova.agents;
       };
     };
   };
