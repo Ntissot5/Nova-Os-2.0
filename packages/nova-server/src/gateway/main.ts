@@ -27,6 +27,8 @@ import { Bus, Forbidden } from "./bus.js";
 import { CATALOGUE } from "./catalogue.js";
 import { Connecteurs, Inconnu, Invalide } from "./connecteurs.js";
 import { Microsoft365 } from "./microsoft.js";
+import { Departements } from "./departements.js";
+import { Introuvable, Invalide as RelaisInvalide, RelaisStore } from "./relais.js";
 import { Conflict, Engine, NotFound } from "./engine.js";
 import { startDemo } from "./demo.js";
 import { loadSkill, type Skill } from "./skills.js";
@@ -52,6 +54,7 @@ const connecteurs = new Connecteurs(bus, cfg, data, secrets);
 await connecteurs.start();
 
 const acces = new Acces(data);
+const deps = new Departements(cfg);
 const engine = new Engine(cfg, journal, { demo, speed: Number(env.NOVA_DEMO_SPEED ?? 1), me: "", bus });
 const claude = env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN ? new Anthropic() : undefined;
 
@@ -69,6 +72,24 @@ const memory = () => {
     return "";
   }
 };
+const relais = new RelaisStore(data, deps, (id) => {
+  try {
+    return engine.task(id);
+  } catch {
+    return undefined;
+  }
+});
+/** Ce que voit une personne : l'état de l'entreprise réduit à ses départements, et ses relais. */
+const vue = (person: string) => deps.filtrer({ ...engine.state(name(person)), relais: relais.pour(person) }, person);
+const personne = (who: string) => who.replace(/^humain:/, "");
+const tache = (id: string, who: string) => {
+  deps.exigerAgent(personne(who), engine.task(id).agentId);
+  return id;
+};
+const agentDe = (id: string, who: string) => {
+  deps.exigerAgent(personne(who), id);
+  return id;
+};
 const triggers = claude && skills.size ? new Triggers({ engine, bus, journal, create: (p) => claude.beta.messages.create(p), cfg, skills, data, memory }) : undefined;
 if (triggers) {
   triggers.start();
@@ -82,7 +103,7 @@ let pending: NodeJS.Timeout | undefined;
 engine.on("change", () => {
   pending ??= setTimeout(() => {
     pending = undefined;
-    for (const [res, person] of clients) res.write(`event: state\ndata: ${JSON.stringify(engine.state(name(person)))}\n\n`);
+    for (const [res, person] of clients) res.write(`event: state\ndata: ${JSON.stringify(vue(person))}\n\n`);
   }, 50);
 });
 setInterval(() => {
@@ -96,18 +117,38 @@ type Handler = (m: RegExpMatchArray, body: any, who: string) => unknown;
 
 const routes: [string, RegExp, Handler][] = [
   ["GET", /^\/api\/moi$/, (_m, _b, who) => ({ role: cfg.people[who.replace(/^humain:/, "")]?.role, agentsActifs: Boolean(triggers) })],
-  ["GET", /^\/api\/tools$/, () => bus.tools(bus.readAll()).map(({ name, connector, title, right }) => ({ name, connector, title, right }))],
-  ["POST", /^\/api\/approvals\/(\w+)\/valider$/, (m, _b, who) => engine.approve(m[1]!, who)],
-  ["POST", /^\/api\/approvals\/(\w+)\/refuser$/, (m, _b, who) => engine.refuse(m[1]!, who)],
-  ["POST", /^\/api\/tasks\/(\w+)\/annuler$/, (m, _b, who) => engine.cancel(m[1]!, who)],
-  ["POST", /^\/api\/tasks\/(\w+)\/arreter$/, (m, _b, who) => engine.stop(m[1]!, who)],
-  ["POST", /^\/api\/agents\/([\w-]+)\/pause$/, (m, _b, who) => engine.pause(m[1]!, who)],
+  ["GET", /^\/api\/tools$/, (_m, _b, who) => bus.tools(deps.droitsQuestions(personne(who), bus.readAll())).map(({ name, connector, title, right }) => ({ name, connector, title, right }))],
+  ["POST", /^\/api\/approvals\/(\w+)\/valider$/, (m, _b, who) => engine.approve(tache(m[1]!, who), who)],
+  ["POST", /^\/api\/approvals\/(\w+)\/refuser$/, (m, _b, who) => engine.refuse(tache(m[1]!, who), who)],
+  ["POST", /^\/api\/tasks\/(\w+)\/annuler$/, (m, _b, who) => engine.cancel(tache(m[1]!, who), who)],
+  ["POST", /^\/api\/tasks\/(\w+)\/arreter$/, (m, _b, who) => engine.stop(tache(m[1]!, who), who)],
+  ["POST", /^\/api\/agents\/([\w-]+)\/pause$/, (m, _b, who) => engine.pause(agentDe(m[1]!, who), who)],
+  [
+    "POST",
+    /^\/api\/relais$/,
+    (_m, body, who) => {
+      const r = relais.envoyer(body ?? {}, personne(who));
+      journal.write({ qui: who, quoi: "relais.envoyer", pourquoi: `${r.de} → ${r.vers} : ${r.titre}` });
+      engine.emit("change");
+      return r;
+    },
+  ],
+  [
+    "POST",
+    /^\/api\/relais\/([\w-]+)\/traiter$/,
+    (m, _b, who) => {
+      const r = relais.traiter(m[1]!, personne(who));
+      journal.write({ qui: who, quoi: "relais.traiter", pourquoi: r.titre });
+      engine.emit("change");
+      return r;
+    },
+  ],
   [
     "POST",
     /^\/api\/agents\/([\w-]+)\/lancer$/,
     (m, _b, who) => {
       if (!triggers) throw new Conflict("Les agents Claude ne sont pas encore activés : il manque la clé d'API Anthropic sur le Hub.");
-      engine.agent(m[1]!);
+      engine.agent(agentDe(m[1]!, who));
       journal.write({ qui: who, quoi: "lancer", agent: m[1] });
       triggers.runNow(m[1]!);
     },
@@ -191,11 +232,13 @@ const routes: [string, RegExp, Handler][] = [
   ["POST", /^\/api\/microsoft\/connecter$/, (_m, _b, who) => (dirigeant(who), microsoft.connecter(who))],
   ["POST", /^\/api\/microsoft\/deconnecter$/, (_m, _b, who) => (dirigeant(who), microsoft.deconnecter(who))],
   ["POST", /^\/api\/releves$/, (_m, body, who) => (dirigeant(who), saveReleve(data, body, who))],
-  ["POST", /^\/api\/agents\/([\w-]+)\/reprendre$/, (m, _b, who) => engine.resume(m[1]!, who)],
+  ["POST", /^\/api\/agents\/([\w-]+)\/reprendre$/, (m, _b, who) => engine.resume(agentDe(m[1]!, who), who)],
   [
     "POST",
     /^\/api\/agents\/([\w-]+)\/autonomie$/,
     (m, body, who) => {
+      // Le dirigeant choisit l'autonomie de chaque agent (D-014), pas les employés.
+      dirigeant(who);
       if (!AUTONOMY.includes(body?.level)) throw new BadRequest("Niveau d'autonomie inconnu.");
       engine.setAutonomy(m[1]!, body.level, who);
     },
@@ -211,7 +254,7 @@ const server = createServer(async (req, res) => {
     if (acces.estRevoque(person)) return send(res, 403, { erreur: "Ton accès a été révoqué. Adresse-toi à la direction." });
     const who = `humain:${person}`;
 
-    if (url.pathname === "/api/state") return send(res, 200, engine.state(name(person)));
+    if (url.pathname === "/api/state") return send(res, 200, vue(person));
     if (url.pathname === "/api/live") return live(req, res, person);
     if (url.pathname === "/api/ask" && req.method === "POST") return question(res, (await readJson(req))?.question, who);
 
@@ -221,7 +264,7 @@ const server = createServer(async (req, res) => {
     }
     send(res, 404, { erreur: "Route inconnue." });
   } catch (e) {
-    const status = e instanceof NotFound || e instanceof Inconnu ? 404 : e instanceof Conflict ? 409 : e instanceof BadRequest || e instanceof Invalide ? 400 : e instanceof Forbidden ? 403 : 500;
+    const status = e instanceof NotFound || e instanceof Inconnu || e instanceof Introuvable ? 404 : e instanceof Conflict ? 409 : e instanceof BadRequest || e instanceof Invalide || e instanceof RelaisInvalide ? 400 : e instanceof Forbidden ? 403 : 500;
     if (status === 500) console.error(e);
     send(res, status, { erreur: e instanceof Error ? e.message : String(e) });
   }
@@ -233,7 +276,7 @@ for (const sig of ["SIGTERM", "SIGINT"] as const) process.on(sig, () => void bus
 
 function live(req: IncomingMessage, res: ServerResponse, person: string) {
   res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive" });
-  res.write(`event: state\ndata: ${JSON.stringify(engine.state(name(person)))}\n\n`);
+  res.write(`event: state\ndata: ${JSON.stringify(vue(person))}\n\n`);
   clients.set(res, person);
   req.on("close", () => clients.delete(res));
 }
@@ -251,7 +294,7 @@ async function question(res: ServerResponse, q: unknown, who: string) {
     await ask(q.trim(), {
       create: (p) => claude.beta.messages.create(p),
       bus,
-      rights: bus.readAll(),
+      rights: deps.droitsQuestions(personne(who), bus.readAll()),
       caller: who,
       company: cfg.company.name,
       today: new Date().toLocaleDateString("fr-CH", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),

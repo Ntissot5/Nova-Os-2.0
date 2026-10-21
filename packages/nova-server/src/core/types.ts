@@ -11,6 +11,39 @@ export interface CompanyConfig {
   apps: string[];
   agents: Record<string, AgentConfig>;
   limits: { paymentApprovalAboveCHF: number; undoDelaySeconds: number };
+  /** Départements (D-029). Vide : tout le monde voit tout, comme avant. */
+  departements?: Record<string, DepartementConfig>;
+}
+
+export interface DepartementConfig {
+  name: string;
+  couleur: string;
+  membres: string[];
+  agents: string[];
+}
+
+/** Un département tel que le voit la personne connectée. */
+export interface DepartementVue {
+  id: string;
+  name: string;
+  couleur: string;
+  membres: { id: string; name: string }[];
+  agents: string[];
+  /** La personne en fait partie (sinon : elle le voit parce qu'elle dirige). */
+  mien: boolean;
+}
+
+/** Un dossier envoyé d'un département à un autre (« Envoyer à… »). */
+export interface Relais {
+  id: string;
+  de: string; // département d'origine, ou « direction »
+  par: string; // personne
+  vers: string; // département destinataire
+  titre: string;
+  message: string;
+  tache?: { id: string; titre: string; resume?: string };
+  cree: string;
+  traite?: { par: string; le: string };
 }
 
 export interface AgentConfig {
@@ -106,6 +139,11 @@ export interface State {
   approvals: Approval[];
   tasks: Task[]; // récentes, plus récentes d'abord
   gains: { minutesThisWeek: number; tasksThisWeek: number };
+  /** Les départements visibles par la personne connectée, et les relais qui la concernent. */
+  departements?: DepartementVue[];
+  relais?: Relais[];
+  /** Tous les départements, noms et couleurs seulement : à qui on peut envoyer un dossier. */
+  annuaire?: { id: string; name: string; couleur: string }[];
 }
 
 /** Une question en langage naturel posée depuis la barre du haut ou Nova Home. */

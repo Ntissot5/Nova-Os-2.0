@@ -60,6 +60,7 @@ in
     system.checks = [
       (pkgs.runCommand "nova-accent-aa" { } ''
         ${pkgs.nodejs_22}/bin/node ${../design}/build.mjs check '${cfg.brand.accent}'
+        ${lib.concatMapStrings (d: "${pkgs.nodejs_22}/bin/node ${../design}/build.mjs check '${d.couleur}'\n") (lib.attrValues cfg.departements)}
         touch $out
       '')
     ];

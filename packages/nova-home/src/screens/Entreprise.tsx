@@ -3,6 +3,7 @@
 import type { AgentState, State, Task } from "../../../nova-server/src/core/types";
 import { act, useMoi } from "../api";
 import { ReleveTile } from "./Mesures";
+import { couleurs } from "../components/Envoyer";
 import { Feed } from "../components/Feed";
 import { Page } from "../components/Shell";
 import { AUTONOMY_LABEL, Bloc, Button, Doc, Monogram, Phrase, Undo, WhyButton } from "../components/ui";
@@ -58,11 +59,19 @@ export function Entreprise({ state, now }: { state: State; now: Date }) {
             )}
           </Bloc>
 
-          <div className="agents-row">
-            {state.agents.map((a) => (
-              <AgentTile key={a.id} agent={a} state={state} now={now} />
-            ))}
-          </div>
+          {state.departements?.length ? (
+            <nav aria-label="Départements" className="deps-row">
+              {state.departements.map((d) => (
+                <DepTile key={d.id} d={d} state={state} />
+              ))}
+            </nav>
+          ) : (
+            <div className="agents-row">
+              {state.agents.map((a) => (
+                <AgentTile key={a.id} agent={a} state={state} now={now} />
+              ))}
+            </div>
+          )}
 
           <Bloc title="Ce qui s'est passé" id="passe">
             <ul className="list" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "var(--space-3)" }}>
@@ -108,6 +117,7 @@ export function Entreprise({ state, now }: { state: State; now: Date }) {
               </ul>
             </Bloc>
           )}
+          {(state.relais?.length ?? 0) > 0 && <RelaisTile state={state} now={now} />}
           {moi.role === "dirigeant" && <ReleveTile now={now} />}
           <Bloc
             title="Ce que ça t'a fait gagner"
@@ -162,7 +172,7 @@ function Live({ task, agent, others, name }: { task: Task; agent: AgentState; ot
   );
 }
 
-function AgentTile({ agent, state, now }: { agent: AgentState; state: State; now: Date }) {
+export function AgentTile({ agent, state, now }: { agent: AgentState; state: State; now: Date }) {
   const today = state.tasks.filter((t) => t.agentId === agent.id && t.status === "terminee" && sameDay(t.endedAt ?? t.startedAt, now));
   return (
     <a className="tile tile-link agent-tile" href={`#/agents/${agent.id}`}>
@@ -179,6 +189,46 @@ function AgentTile({ agent, state, now }: { agent: AgentState; state: State; now
         {today.length ? ` · ${duration(today.reduce((s, t) => s + t.minutesSaved, 0))} gagnées` : ""}
       </p>
     </a>
+  );
+}
+
+function DepTile({ d, state }: { d: NonNullable<State["departements"]>[number]; state: State }) {
+  const agents = state.agents.filter((a) => d.agents.includes(a.id));
+  const attente = state.approvals.filter((x) => d.agents.includes(x.agentId)).length;
+  const recus = (state.relais ?? []).filter((r) => r.vers === d.id && !r.traite).length;
+  const travaille = agents.filter((a) => a.status === "travaille").length;
+  return (
+    <a className="tile tile-link dep-tile" href={`#/departements/${d.id}`} style={couleurs(d.couleur)}>
+      <span className="mono" aria-hidden="true">
+        {d.name.slice(0, 1)}
+      </span>
+      <h2 className="title">{d.name}</h2>
+      <p className="caption">
+        {[
+          agents.length ? plural(agents.length, "agent", "agents") : "pas d'agent",
+          travaille ? `${travaille} au travail` : "",
+          attente ? `${attente} à valider` : "",
+          recus ? `${recus} reçu${recus > 1 ? "s" : ""}` : "",
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      </p>
+    </a>
+  );
+}
+
+function RelaisTile({ state, now }: { state: State; now: Date }) {
+  const nom = (x: string) => (x === "direction" ? "Direction" : (state.annuaire?.find((d) => d.id === x)?.name ?? x));
+  return (
+    <Bloc title="Relais entre départements" id="relais">
+      <ul className="list">
+        {(state.relais ?? []).slice(0, 5).map((r) => (
+          <li key={r.id}>
+            <Phrase meta={`${nom(r.de)} → ${nom(r.vers)} · ${r.traite ? "traité" : "en attente"} · ${relative(r.cree, now)}`}>{r.titre}</Phrase>
+          </li>
+        ))}
+      </ul>
+    </Bloc>
   );
 }
 

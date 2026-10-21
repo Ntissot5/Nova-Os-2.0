@@ -51,7 +51,7 @@ flake.nix                    Point d'entrée : machines, paquets, image d'instal
 companies/demo/              Une entreprise : company.nix + data/ (formats ouverts)
 modules/                     Modules NixOS nova.* : base, disque, hub (gardien, flotte, sauvegarde), poste (bureau)
 packages/nova-server/        nova-gateway (Hub), nova-daemon (poste), connecteurs MCP, commande nova
-packages/nova-home/          Interface : espace Entreprise, agents, Demander, connecteurs, coûts, flotte
+packages/nova-home/          Interface : espace Entreprise (Direction), départements, agents, Demander, connecteurs, coûts, flotte
 packages/nova-shell/         Extension GNOME : la barre du haut Nova
 packages/installer.nix       Image d'installation automatique
 verticals/gerance/skills/    Le métier des agents de gérance, en Markdown
@@ -73,4 +73,4 @@ scripts/                     dev, bench-question, rapport-pilote
 
 ## Statut
 
-MVP construit, phases 0 à 3 (voir `ROADMAP.md`) : bureau Nova, bus MCP à 5 connecteurs (testés contre de vrais serveurs), agents Claude visibles avec autonomie choisie, questions en langage naturel, export et import sans perte, flotte du Hub, connecteurs ajoutés depuis l'interface (tout service MCP), Microsoft 365 en un clic (mail et agenda Outlook). Restent à faire : brancher une clé d'API Anthropic, installer le pilote et mesurer, et gérer des postes distants (Q-3).
+MVP construit, phases 0 à 3 (voir `ROADMAP.md`) : bureau Nova, bus MCP à 5 connecteurs (testés contre de vrais serveurs), agents Claude visibles avec autonomie choisie, questions en langage naturel, export et import sans perte, flotte du Hub, connecteurs ajoutés depuis l'interface (tout service MCP), Microsoft 365 en un clic (mail et agenda Outlook), un espace par département avec « Envoyer à… ». Restent à faire : brancher une clé d'API Anthropic, installer le pilote et mesurer, et gérer des postes distants (Q-3).

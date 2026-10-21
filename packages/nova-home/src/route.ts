@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 
-export type Route = { name: "entreprise" } | { name: "agent"; id: string } | { name: "design" } | { name: "demander"; q?: string } | { name: "couts" } | { name: "flotte" } | { name: "connecteurs" };
+export type Route = { name: "entreprise" } | { name: "agent"; id: string } | { name: "design" } | { name: "demander"; q?: string } | { name: "couts" } | { name: "flotte" } | { name: "connecteurs" } | { name: "departement"; id: string };
 
 function parse(hash: string): Route {
   const m = hash.match(/^#\/agents\/([\w-]+)/);
   if (m) return { name: "agent", id: m[1]! };
+  const dep = hash.match(/^#\/departements\/([\w-]+)/);
+  if (dep) return { name: "departement", id: dep[1]! };
   if (hash.startsWith("#/design")) return { name: "design" };
   if (hash.startsWith("#/couts")) return { name: "couts" };
   if (hash.startsWith("#/flotte")) return { name: "flotte" };
