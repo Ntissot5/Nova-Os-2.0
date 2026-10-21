@@ -55,10 +55,12 @@
 
 **Mesure :** `scripts/bench-export` — exporter la boîte pilote anonymisée, importer sur une VM vierge, comparer les empreintes. Cible : 0 différence, < 30 min.
 
+## Semaine 12 — Marge
+
+Imprévus et mise en route chez le pilote.
+
 ---
 
 ## Après le MVP (non engagé)
-
-Semaine 12 : marge pour les imprévus et la mise en route chez le pilote.
 
 Onboarding d'un employé en 10 min par clé USB ou lien · verticaux fiduciaire, agence, cabinet · VM Windows encapsulée · mémoire d'entreprise enrichie par les agents.
