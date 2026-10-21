@@ -1,0 +1,13 @@
+{
+  "name": "Nova OS : essai",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "postCreateCommand": "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci --no-audit --no-fund",
+  "postAttachCommand": "scripts/essayer",
+  "forwardPorts": [7777, 7778, 7779],
+  "portsAttributes": {
+    "7777": { "label": "Noa, dirigeant", "onAutoForward": "openBrowser" },
+    "7778": { "label": "Sophie, Gérance", "onAutoForward": "silent" },
+    "7779": { "label": "Léa, Comptabilité", "onAutoForward": "silent" },
+    "7700": { "label": "Gardien (interne)", "onAutoForward": "ignore" }
+  }
+}

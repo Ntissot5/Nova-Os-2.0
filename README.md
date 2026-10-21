@@ -21,6 +21,13 @@ Une entreprise = un fichier `company.nix` + un dossier `data/`. Zéro lock-in.
 |---|---|
 | ![Connecteurs](docs/captures/connecteurs.png) | ![Brancher un service](docs/captures/connecteurs-ajouter.png) |
 
+## Essayer
+
+| Où | Comment |
+|---|---|
+| Sur son Mac ou son PC (Node.js 22) | `scripts/essayer`, puis http://localhost:7777 (Noa, dirigeant), :7778 (Sophie, Gérance), :7779 (Léa, Comptabilité) |
+| Sans rien installer | Sur GitHub : **Code → Codespaces → Create codespace**. Nova démarre tout seul et s'ouvre dans le navigateur. |
+
 ## Démarrer
 
 Prérequis : [Nix](https://nixos.org/download) (avec flakes) et Node.js 22.

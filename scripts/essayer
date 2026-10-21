@@ -32,6 +32,9 @@ else
   unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
 fi
 
+# Dans GitHub Codespaces, le navigateur arrive par une adresse *.app.github.dev (privée, liée au compte GitHub).
+[ "${CODESPACES:-}" = "true" ] && export NOVA_HOTES=".${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}"
+
 pids=()
 NOVA_COMPANY="$etat/company.json" NOVA_DATA="$etat/data" NOVA_DEMO=1 NOVA_SKILLS=verticals \
   NOVA_SECRETS="$etat/secrets" NOVA_GATEWAY_PORT=7700 node packages/nova-server/dist/gateway/main.js &
