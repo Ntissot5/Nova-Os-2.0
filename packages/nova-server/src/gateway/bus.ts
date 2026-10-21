@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Journal } from "../core/journal.js";
 
 export const CONNECTORS = ["fichiers", "mail", "agenda", "compta", "telephone"] as const;
@@ -21,12 +22,23 @@ const ENTRY: Record<ConnectorName, string> = {
 
 export interface ToolInfo {
   name: string;
-  connector: ConnectorName;
+  connector: string;
   title: string;
   description: string;
   inputSchema: Record<string, unknown>;
   right: string;
   sensitive: boolean;
+  /** Connecteur ajouté depuis l'écran Connecteurs : nom de l'outil chez lui, et réglage de validation. */
+  externe?: { nom: string; outil: string; toujoursValider: boolean };
+}
+
+/** Un serveur MCP distant ajouté par le dirigeant. Le jeton ne quitte jamais le gardien. */
+export interface Distant {
+  id: string;
+  nom: string;
+  url: string;
+  jeton?: string;
+  toujoursValider: boolean;
 }
 
 export interface Preview {
@@ -34,6 +46,8 @@ export interface Preview {
   amountCHF?: number;
   recipients?: number;
   unknownRecipient?: boolean;
+  /** Nom du connecteur ajouté dont l'action doit toujours être validée par un humain. */
+  toujoursValider?: string;
 }
 
 /** Droits d'un appelant : connecteur → droits (« read », « send »…), comme dans company.nix. */
@@ -42,7 +56,7 @@ export type Rights = Partial<Record<string, string[]>>;
 export class Forbidden extends Error {}
 
 export class Bus {
-  private clients = new Map<ConnectorName, Client>();
+  private clients = new Map<string, Client>();
   private catalog = new Map<string, ToolInfo>();
 
   constructor(
@@ -79,6 +93,62 @@ export class Bus {
     );
   }
 
+  /**
+   * Branche un serveur MCP distant. Ses outils ne connaissent pas les conventions Nova : un outil n'est
+   * « lecture » que s'il se déclare en lecture seule (readOnlyHint) ; tout le reste est une action sensible,
+   * qui passe par les règles d'autonomie. Les noms sont préfixés pour ne jamais masquer un outil existant.
+   */
+  async addRemote(d: Distant): Promise<ToolInfo[]> {
+    if ((CONNECTORS as readonly string[]).includes(d.id) || this.clients.has(d.id)) throw new Forbidden(`Le connecteur ${d.id} existe déjà.`);
+    const client = new Client({ name: "nova-gateway", version: "0.1.0" });
+    const headers: Record<string, string> = d.jeton ? { authorization: `Bearer ${d.jeton}` } : {};
+    await client.connect(new StreamableHTTPClientTransport(new URL(d.url), { requestInit: { headers } }));
+    let tools;
+    try {
+      ({ tools } = await client.listTools());
+    } catch (e) {
+      await client.close();
+      throw e;
+    }
+    this.clients.set(d.id, client);
+    const added = tools.map((t) => {
+      const lecture = t.annotations?.readOnlyHint === true;
+      const info: ToolInfo = {
+        name: `${d.id}__${t.name}`.replace(/[^\w-]/g, "_").slice(0, 64),
+        connector: d.id,
+        title: t.title ?? t.annotations?.title ?? t.name,
+        description: t.description ?? "",
+        inputSchema: t.inputSchema as Record<string, unknown>,
+        right: lecture ? "read" : "write",
+        sensitive: !lecture,
+        externe: { nom: d.nom, outil: t.name, toujoursValider: d.toujoursValider },
+      };
+      this.catalog.set(info.name, info);
+      return info;
+    });
+    return added;
+  }
+
+  async removeRemote(id: string) {
+    const client = this.clients.get(id);
+    if (!client || (CONNECTORS as readonly string[]).includes(id)) return;
+    for (const [name, t] of this.catalog) if (t.connector === id) this.catalog.delete(name);
+    this.clients.delete(id);
+    await client.close().catch(() => {});
+  }
+
+  /** Les connecteurs branchés, avec leur nombre d'outils. */
+  connectors() {
+    const n = new Map<string, number>();
+    for (const t of this.catalog.values()) n.set(t.connector, (n.get(t.connector) ?? 0) + 1);
+    return [...this.clients.keys()].map((id) => ({ id, outils: n.get(id) ?? 0 }));
+  }
+
+  /** Lecture sur toutes les sources branchées : ce qu'a une personne qui pose une question. */
+  readAll(): Rights {
+    return Object.fromEntries([...this.clients.keys()].map((c) => [c, ["read"]]));
+  }
+
   async stop() {
     await Promise.all([...this.clients.values()].map((c) => c.close()));
   }
@@ -104,6 +174,8 @@ export class Bus {
   async preview(caller: string, rights: Rights, tool: string, args: Record<string, unknown>): Promise<Preview> {
     const t = this.check(caller, rights, tool);
     if (!t.sensitive) return { summary: t.title };
+    // Un connecteur ajouté ne sait pas faire d'aperçu : on montre l'outil et ses paramètres, tels quels.
+    if (t.externe) return { summary: `${t.externe.nom} : ${t.title} ${apercu(args)}`.trim(), toujoursValider: t.externe.toujoursValider ? t.externe.nom : undefined };
     return (await this.raw(t, { ...args, dryRun: true })) as unknown as Preview;
   }
 
@@ -135,11 +207,22 @@ export class Bus {
   }
 
   private async raw(t: ToolInfo, args: Record<string, unknown>) {
-    const client = this.clients.get(t.connector)!;
-    const res = await client.callTool({ name: t.name, arguments: args });
-    if (res.isError) throw new Error((res.content as { text?: string }[])[0]?.text ?? "Erreur du connecteur.");
-    return (res.structuredContent ?? {}) as Record<string, unknown>;
+    const client = this.clients.get(t.connector);
+    if (!client) throw new Forbidden(`Le connecteur ${t.connector} n'est plus branché.`);
+    const res = await client.callTool({ name: t.externe?.outil ?? t.name, arguments: args });
+    const content = (res.content ?? []) as { type: string; text?: string }[];
+    if (res.isError) throw new Error(content[0]?.text ?? "Erreur du connecteur.");
+    if (res.structuredContent) return res.structuredContent as Record<string, unknown>;
+    // Les serveurs tiers répondent souvent en texte seul.
+    return { texte: content.filter((c) => c.type === "text").map((c) => c.text).join("\n").slice(0, 20_000) };
   }
+}
+
+function apercu(args: Record<string, unknown>) {
+  const s = Object.entries(args)
+    .map(([k, v]) => `${k} = ${typeof v === "string" ? v : JSON.stringify(v)}`)
+    .join(", ");
+  return s ? `(${s.length > 240 ? `${s.slice(0, 240)}…` : s})` : "";
 }
 
 /** Droits de lecture sur toutes les sources : ce qu'a une personne qui pose une question (Phase 1). */

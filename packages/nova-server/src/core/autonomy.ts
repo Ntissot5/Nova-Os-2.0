@@ -14,6 +14,9 @@ export function decide(action: Action, autonomy: Autonomy, limits: CompanyConfig
     return { kind: "validation", reason: `Paiement au-dessus de ${chf(limits.paymentApprovalAboveCHF)}` };
   }
 
+  // Un connecteur ajouté par le dirigeant n'a pas les aperçus de Nova : par défaut, ses actions attendent un humain.
+  if (action.toujoursValider) return { kind: "validation", reason: `Action de ${action.toujoursValider}, connecteur ajouté` };
+
   if (autonomy === "je-valide-tout") return { kind: "validation", reason: "Tu valides toutes les actions de cet agent" };
 
   if (autonomy === "je-valide-l-important") {

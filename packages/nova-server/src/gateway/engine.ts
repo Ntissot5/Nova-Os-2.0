@@ -213,6 +213,7 @@ export class Engine extends EventEmitter {
         amountCHF: previews.reduce((s, p) => s + (p.amountCHF ?? 0), 0) || undefined,
         recipients: previews.reduce((s, p) => s + (p.recipients ?? 0), 0) || undefined,
         unknownRecipient: previews.some((p) => p.unknownRecipient),
+        toujoursValider: previews.find((p) => p.toujoursValider)?.toujoursValider,
       };
     }
     const agent = this.agent(task.agentId);

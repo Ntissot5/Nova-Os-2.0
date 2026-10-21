@@ -12,6 +12,7 @@
 //   ANTHROPIC_API_KEY     clé d'API (fichier secret sops) ; sans elle, les questions sont désactivées
 //   NOVA_MAIL_*, NOVA_AGENDA_*   fournisseurs réels des connecteurs (voir connectors/)
 //   NOVA_SKILLS           dossier des métiers (verticals/), où vivent les skills des agents
+//   NOVA_SECRETS          dossier des secrets du Hub (jetons des connecteurs ajoutés), hors de data/
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
@@ -20,7 +21,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { fileJournal } from "../core/journal.js";
 import type { AskEvent, Autonomy, CompanyConfig } from "../core/types.js";
 import { ask } from "./ask.js";
-import { Bus, Forbidden, READ_ALL } from "./bus.js";
+import { Bus, Forbidden } from "./bus.js";
+import { CATALOGUE } from "./catalogue.js";
+import { Connecteurs, Inconnu, Invalide } from "./connecteurs.js";
 import { Conflict, Engine, NotFound } from "./engine.js";
 import { startDemo } from "./demo.js";
 import { loadSkill, type Skill } from "./skills.js";
@@ -39,6 +42,8 @@ const journal = fileJournal(join(data, "journal"));
 const connectorEnv = Object.fromEntries(Object.entries(env).filter(([k]) => /^NOVA_(MAIL|AGENDA|TODAY)_?/.test(k)) as [string, string][]);
 const bus = new Bus(journal, { ...connectorEnv, NOVA_DATA: data });
 await bus.start();
+const connecteurs = new Connecteurs(bus, cfg, data, env.NOVA_SECRETS ?? join(data, "..", "secrets"));
+await connecteurs.start();
 
 const acces = new Acces(data);
 const engine = new Engine(cfg, journal, { demo, speed: Number(env.NOVA_DEMO_SPEED ?? 1), me: "", bus });
@@ -85,7 +90,7 @@ type Handler = (m: RegExpMatchArray, body: any, who: string) => unknown;
 
 const routes: [string, RegExp, Handler][] = [
   ["GET", /^\/api\/moi$/, (_m, _b, who) => ({ role: cfg.people[who.replace(/^humain:/, "")]?.role, agentsActifs: Boolean(triggers) })],
-  ["GET", /^\/api\/tools$/, () => bus.tools(READ_ALL).map(({ name, connector, title, right }) => ({ name, connector, title, right }))],
+  ["GET", /^\/api\/tools$/, () => bus.tools(bus.readAll()).map(({ name, connector, title, right }) => ({ name, connector, title, right }))],
   ["POST", /^\/api\/approvals\/(\w+)\/valider$/, (m, _b, who) => engine.approve(m[1]!, who)],
   ["POST", /^\/api\/approvals\/(\w+)\/refuser$/, (m, _b, who) => engine.refuse(m[1]!, who)],
   ["POST", /^\/api\/tasks\/(\w+)\/annuler$/, (m, _b, who) => engine.cancel(m[1]!, who)],
@@ -135,6 +140,47 @@ const routes: [string, RegExp, Handler][] = [
       await (m[1] === "revoquer" ? acces.revoquer(person) : acces.retablir(person));
     },
   ],
+  [
+    "GET",
+    /^\/api\/connecteurs$/,
+    (_m, _b, who) => (
+      dirigeant(who),
+      {
+        integres: bus.connectors().filter((c) => !connecteurs.liste().some((a) => a.id === c.id)),
+        ajoutes: connecteurs.liste(),
+        catalogue: CATALOGUE,
+        agents: Object.entries(cfg.agents).map(([id, a]) => ({ id, nom: a.name })),
+      }
+    ),
+  ],
+  [
+    "POST",
+    /^\/api\/connecteurs$/,
+    async (_m, body, who) => {
+      dirigeant(who);
+      const c = await connecteurs.ajouter(body ?? {}, who);
+      journal.write({ qui: who, quoi: "connecteur.ajouter", pourquoi: `${c.nom} (${c.url}), ${c.outils.length} outils` });
+      return c;
+    },
+  ],
+  [
+    "POST",
+    /^\/api\/connecteurs\/([\w-]+)\/regler$/,
+    async (m, body, who) => {
+      dirigeant(who);
+      journal.write({ qui: who, quoi: "connecteur.regler", pourquoi: m[1] });
+      return connecteurs.regler(m[1]!, body ?? {});
+    },
+  ],
+  [
+    "POST",
+    /^\/api\/connecteurs\/([\w-]+)\/retirer$/,
+    async (m, _b, who) => {
+      dirigeant(who);
+      await connecteurs.retirer(m[1]!);
+      journal.write({ qui: who, quoi: "connecteur.retirer", pourquoi: m[1] });
+    },
+  ],
   ["POST", /^\/api\/releves$/, (_m, body, who) => (dirigeant(who), saveReleve(data, body, who))],
   ["POST", /^\/api\/agents\/([\w-]+)\/reprendre$/, (m, _b, who) => engine.resume(m[1]!, who)],
   [
@@ -166,7 +212,7 @@ const server = createServer(async (req, res) => {
     }
     send(res, 404, { erreur: "Route inconnue." });
   } catch (e) {
-    const status = e instanceof NotFound ? 404 : e instanceof Conflict ? 409 : e instanceof BadRequest ? 400 : e instanceof Forbidden ? 403 : 500;
+    const status = e instanceof NotFound || e instanceof Inconnu ? 404 : e instanceof Conflict ? 409 : e instanceof BadRequest || e instanceof Invalide ? 400 : e instanceof Forbidden ? 403 : 500;
     if (status === 500) console.error(e);
     send(res, status, { erreur: e instanceof Error ? e.message : String(e) });
   }
@@ -196,7 +242,7 @@ async function question(res: ServerResponse, q: unknown, who: string) {
     await ask(q.trim(), {
       create: (p) => claude.beta.messages.create(p),
       bus,
-      rights: READ_ALL,
+      rights: bus.readAll(),
       caller: who,
       company: cfg.company.name,
       today: new Date().toLocaleDateString("fr-CH", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { State } from "../../../nova-server/src/core/types";
+import { useMoi } from "../api";
 import type { Route } from "../route";
 import { Monogram } from "./ui";
 
@@ -29,7 +30,14 @@ const Search = () => (
   </svg>
 );
 
+const Plug = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0zM12 17v5" />
+  </svg>
+);
+
 export function Rail({ state, route }: { state: State | null; route: Route }) {
+  const moi = useMoi();
   return (
     <nav aria-label="Navigation">
       <ul className="rail glass">
@@ -43,6 +51,13 @@ export function Rail({ state, route }: { state: State | null; route: Route }) {
             <Search />
           </a>
         </li>
+        {moi.role === "dirigeant" && (
+          <li>
+            <a href="#/connecteurs" aria-current={route.name === "connecteurs" ? "page" : undefined} aria-label="Connecteurs">
+              <Plug />
+            </a>
+          </li>
+        )}
         <li className="sep" aria-hidden="true" />
         {state?.agents.map((a) => (
           <li key={a.id}>

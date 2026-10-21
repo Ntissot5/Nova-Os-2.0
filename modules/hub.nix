@@ -92,6 +92,8 @@ in
       "d /var/lib/nova 0750 root nova -"
       "d /var/lib/nova/data 2770 nova-gateway nova -"
       "d /var/lib/nova/exports 0700 nova-gateway nova -"
+      # Jetons des connecteurs ajoutés depuis l'écran Connecteurs : hors de data/, jamais exportés.
+      "d /var/lib/nova/secrets 0700 nova-gateway nova -"
     ];
 
     # La commande `nova` (export, verifier, import) et ce qu'elle exporte avec data/.
@@ -207,6 +209,7 @@ in
         NOVA_DEMO = if cfg.demo then "1" else "0";
         NOVA_MODEL_QUESTION = cfg.models.question;
         NOVA_SKILLS = "${nova}/share/nova-verticals";
+        NOVA_SECRETS = "/var/lib/nova/secrets";
       } // mailEnv // agendaEnv;
       path = [ pkgs.systemd ]; # systemctl : demandes à la flotte (polkit)
       serviceConfig = {
@@ -217,9 +220,9 @@ in
         EnvironmentFile = lib.optional (cfg.secretsFile != null) "-${cfg.secretsFile}";
         Restart = "always";
         RestartSec = 2;
-        # Le gardien ne peut écrire que dans data/.
+        # Le gardien ne peut écrire que dans data/ et dans ses secrets.
         ProtectSystem = "strict";
-        ReadWritePaths = [ "/var/lib/nova/data" ];
+        ReadWritePaths = [ "/var/lib/nova/data" "/var/lib/nova/secrets" ];
         ProtectHome = true;
         PrivateTmp = true;
         NoNewPrivileges = true;
