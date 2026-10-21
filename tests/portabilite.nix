@@ -74,7 +74,9 @@ pkgs.testers.runNixOSTest {
         assert any(p["id"] == "sophie" and p["revoque"] for p in flotte["personnes"]), flotte
 
     with subtest("la révocation survit à une réactivation du système"):
-        ancienne.succeed("/run/current-system/bin/switch-to-configuration test")
+        # Le script d'activation régénère les comptes (ce qui effacerait un simple verrouillage),
+        # puis réapplique les révocations gardées dans data/.
+        ancienne.succeed("/run/current-system/activate")
         ancienne.succeed("passwd -S sophie | grep -q ' L '")
 
     with subtest("flotte : rétablir l'accès"):
