@@ -139,7 +139,7 @@ before(async () => {
   dir = mkdtempSync(join(tmpdir(), "nova-microsoft-"));
   cpSync(join(root, "companies/demo/data"), join(dir, "data"), { recursive: true });
   bus = new Bus({ write: (e) => void journal.push(e) }, { NOVA_DATA: join(dir, "data"), NOVA_MAIL_FROM: "regie@demo.ch" });
-  ms = new Microsoft365(bus, { write: (e) => void journal.push(e) }, join(dir, "data"), join(dir, "secrets"), "client-nova", "organizations", () => new Promise((r) => setTimeout(r, 5)));
+  ms = new Microsoft365(bus, { write: (e) => void journal.push(e) }, join(dir, "data"), join(dir, "secrets"), "client-nova", "organizations", false, () => new Promise((r) => setTimeout(r, 5)));
   ms.configurer();
   await bus.start(["mail", "agenda"]);
 });
@@ -157,6 +157,13 @@ const until = async (fn: () => boolean) => {
 test("sans identifiant d'application, Nova le dit au lieu d'échouer", () => {
   const sans = new Microsoft365(bus, { write: () => {} }, join(dir, "data"), join(dir, "secrets"), undefined);
   assert.equal(sans.etat().etat, "indisponible");
+});
+
+test("en démonstration, pas de vraie boîte : ses scénarios enverraient de vrais mails", async () => {
+  const demo = new Microsoft365(bus, { write: () => {} }, join(dir, "data"), join(dir, "secrets"), "client-nova", "organizations", true);
+  assert.match((demo.etat() as { raison: string }).raison, /démonstration/);
+  assert.equal((await demo.connecter("humain:noa")).etat, "indisponible");
+  assert.equal(tokenCalls, 0);
 });
 
 test("avant la connexion, Mail lit encore la boîte de démonstration", async () => {

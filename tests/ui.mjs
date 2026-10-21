@@ -28,7 +28,7 @@ const gateway = spawn("node", ["packages/nova-server/dist/gateway/main.js"], {
   cwd: root,
   stdio: "inherit",
   env: { ...env, NOVA_COMPANY: company, NOVA_DATA: join(dir, "data"), NOVA_DEMO: "1", NOVA_DEMO_SPEED: "4", NOVA_GATEWAY_PORT: "7798",
-    NOVA_MICROSOFT_CLIENT_ID: "client-nova", NOVA_MICROSOFT_LOGIN: "http://127.0.0.1:7796", NOVA_MICROSOFT_GRAPH: "http://127.0.0.1:7796/v1.0" },
+    NOVA_MICROSOFT_CLIENT_ID: "client-nova" },
 });
 const daemon = spawn("node", ["packages/nova-server/dist/daemon/main.js"], {
   cwd: root,
@@ -59,6 +59,21 @@ const microsoft = createServer((req, res) => {
   if (p === "/v1.0/me") return json({ displayName: "Régie Démo SA", mail: "regie@demo.ch" });
   json({ value: [] });
 }).listen(7796, "127.0.0.1");
+
+// Une deuxième Nova, hors démonstration : la seule où une vraie boîte Microsoft peut être connectée.
+cpSync(join(root, "companies/demo/data"), join(dir, "data-reel"), { recursive: true });
+const msEnv = { NOVA_MICROSOFT_CLIENT_ID: "client-nova", NOVA_MICROSOFT_LOGIN: "http://127.0.0.1:7796", NOVA_MICROSOFT_GRAPH: "http://127.0.0.1:7796/v1.0" };
+const gateway2 = spawn("node", ["packages/nova-server/dist/gateway/main.js"], {
+  cwd: root,
+  stdio: "inherit",
+  env: { ...env, ...msEnv, NOVA_COMPANY: company, NOVA_DATA: join(dir, "data-reel"), NOVA_DEMO: "0", NOVA_GATEWAY_PORT: "7795" },
+});
+const daemon2 = spawn("node", ["packages/nova-server/dist/daemon/main.js"], {
+  cwd: root,
+  stdio: "inherit",
+  env: { ...env, NOVA_GATEWAY: "http://127.0.0.1:7795", NOVA_PERSON: "noa", NOVA_THEME_CSS: join(dir, "theme.css"), NOVA_HOME_DIR: "packages/nova-home/dist", NOVA_PORT: "7794" },
+});
+const base2 = "http://127.0.0.1:7794";
 
 const state = async () => (await fetch(`${base}/api/state`)).json();
 const until = async (what, fn, ms = 30000) => {
@@ -172,9 +187,18 @@ try {
     await p.close();
   });
 
-  await check("Microsoft 365 en un clic : un code à taper, puis Outlook branché", async () => {
+  await check("en démonstration, Nova refuse de brancher une vraie boîte Microsoft", async () => {
     const p = await browser.newPage();
     await p.goto(`${base}/#/connecteurs`);
+    await p.getByText(/enverraient de vrais mails/).waitFor();
+    assert.equal(await p.getByRole("button", { name: "Se connecter avec Microsoft" }).count(), 0);
+    await p.close();
+  });
+
+  await check("Microsoft 365 en un clic : un code à taper, puis Outlook branché", async () => {
+    await until("seconde Nova prête", async () => (await fetch(`${base2}/api/state`).catch(() => null))?.ok);
+    const p = await browser.newPage();
+    await p.goto(`${base2}/#/connecteurs`);
     await p.getByRole("button", { name: "Se connecter avec Microsoft" }).click();
     await p.getByText("NOVA-1234").waitFor();
     await p.addScriptTag({ content: axe });
@@ -194,6 +218,8 @@ try {
   daemon.kill();
   gateway.kill();
   crm.close();
+  daemon2.kill();
+  gateway2.kill();
   microsoft.close();
 }
 

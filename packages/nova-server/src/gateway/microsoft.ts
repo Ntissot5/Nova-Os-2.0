@@ -36,7 +36,10 @@ export class Microsoft365 {
     private data: string,
     private secrets: string,
     private clientId: string | undefined,
+    /** « organizations » : comptes d'entreprise ; « common » : aussi les comptes personnels (Outlook.com). */
     private tenant = "organizations",
+    /** En démonstration, des scénarios écrits d'avance envoient des mails : jamais depuis une vraie boîte. */
+    private demo = false,
     private wait = (ms: number) => new Promise((r) => setTimeout(r, ms)),
   ) {}
 
@@ -55,13 +58,15 @@ export class Microsoft365 {
 
   /** Avant le démarrage du bus : si l'entreprise est connectée, Mail et Agenda partent directement sur Outlook. */
   configurer() {
-    if (!this.connexion()) return;
+    if (this.demo || !this.connexion()) return;
     this.bus.override("mail", { ...this.env(), NOVA_MAIL_BACKEND: "microsoft" });
     this.bus.override("agenda", { ...this.env(), NOVA_AGENDA_BACKEND: "microsoft" });
   }
 
   etat(): EtatMicrosoft {
     if (!this.clientId) return { etat: "indisponible", raison: "Nova n'a pas encore d'identifiant d'application Microsoft (option nova.connectors.microsoft.clientId)." };
+    if (this.demo)
+      return { etat: "indisponible", raison: "Nova tourne en démonstration : ses scénarios enverraient de vrais mails depuis ta boîte. Désactive la démonstration pour connecter Microsoft 365." };
     const c = this.connexion();
     if (c) return { etat: "connecte", compte: c.compte, nom: c.nom, depuis: c.depuis, services: SERVICES };
     if (this.attente) return { etat: "en-attente", code: this.attente.code, adresse: this.attente.adresse, expire: this.attente.expire };
@@ -71,7 +76,7 @@ export class Microsoft365 {
 
   /** Demande un code à Microsoft, puis attend en arrière-plan que le dirigeant l'accepte. */
   async connecter(who: string): Promise<EtatMicrosoft> {
-    if (!this.clientId) return this.etat();
+    if (!this.clientId || this.demo) return this.etat();
     this.attente?.stop();
     this.erreur = undefined;
     const res = await fetch(`${LOGIN()}/${this.tenant}/oauth2/v2.0/devicecode`, {

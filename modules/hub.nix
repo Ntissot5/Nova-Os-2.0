@@ -53,6 +53,11 @@ in
           connecte Outlook (mail et agenda) en un clic depuis l'écran Connecteurs. Ce n'est pas un secret.
         '';
       };
+      microsoft.tenant = mkOption {
+        type = types.enum [ "organizations" "common" ];
+        default = "organizations";
+        description = "organizations : comptes Microsoft 365 d'entreprise ; common : aussi les comptes personnels (Outlook.com, Hotmail).";
+      };
       agenda = {
         backend = mkOption { type = types.enum [ "ics" "caldav" ]; default = "ics"; description = "ics : data/agenda/ ; caldav : le serveur d'agenda de l'entreprise."; };
         url = mkOption { type = types.str; default = ""; };
@@ -221,6 +226,7 @@ in
         NOVA_SECRETS = "/var/lib/nova/secrets";
       } // lib.optionalAttrs (cfg.connectors.microsoft.clientId != null) {
         NOVA_MICROSOFT_CLIENT_ID = cfg.connectors.microsoft.clientId;
+        NOVA_MICROSOFT_TENANT = cfg.connectors.microsoft.tenant;
       } // mailEnv // agendaEnv;
       path = [ pkgs.systemd ]; # systemctl : demandes à la flotte (polkit)
       serviceConfig = {
