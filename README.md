@@ -10,7 +10,15 @@ Une entreprise = un fichier `company.nix` + un dossier `data/`. Zéro lock-in.
 3. **Runtime d'agents** — Claude Code et Claude Agent SDK, branchés sur le bus MCP.
 4. **Shell & Dashboard** — un seul écran pour le dirigeant : flux, validations, coûts.
 
-Le brief complet est dans [`MISSION.md`](MISSION.md).
+## Documents
+
+| Document | Contenu |
+|---|---|
+| [`MISSION.md`](MISSION.md) | Le brief d'origine |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Les 4 couches, les flux, le format `data/` |
+| [`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md) | Tokens, composants, règles d'écriture |
+| [`ROADMAP.md`](ROADMAP.md) | Les 4 phases du MVP et leurs métriques |
+| [`DECISIONS.md`](DECISIONS.md) | Les choix tranchés et les questions ouvertes |
 
 ## Statut
 
