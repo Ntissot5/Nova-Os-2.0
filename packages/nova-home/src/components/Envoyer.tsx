@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import type { State } from "../../../nova-server/src/core/types";
 import { act } from "../api";
-import { Button } from "./ui";
+import { Button, useDialogue } from "./ui";
 
 export function Envoyer({
   state,
@@ -27,7 +27,7 @@ export function Envoyer({
   const [message, setMessage] = useState("");
   const [erreur, setErreur] = useState<string>();
   const [busy, setBusy] = useState(false);
-  useEffect(() => ref.current?.showModal(), []);
+  useDialogue(ref, onClose);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -44,7 +44,7 @@ export function Envoyer({
   }
 
   return (
-    <dialog ref={ref} aria-labelledby="envoyer-titre" onClose={onClose}>
+    <dialog ref={ref} aria-labelledby="envoyer-titre">
       <form className="stack" style={{ gap: "var(--space-3)" }} onSubmit={submit}>
         <h2 className="title" id="envoyer-titre">
           Envoyer à un département

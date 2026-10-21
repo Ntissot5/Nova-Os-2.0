@@ -102,7 +102,7 @@ try {
   await until("gardien et daemon prêts", async () => (await fetch(`${base}/api/state`).catch(() => null))?.ok);
 
   for (const dark of [false, true])
-    for (const hash of ["#/", "#/agents/locataires", "#/agents/relances", "#/demander", "#/design", "#/connecteurs", "#/departements/gerance"])
+    for (const hash of ["#/", "#/agents/locataires", "#/agents/relances", "#/demander", "#/design", "#/connecteurs", "#/departements/gerance", "#/atelier", "#/reglages"])
       await check(`accessibilité ${hash} (${dark ? "sombre" : "clair"})`, async () => {
         const page = await browser.newPage({ colorScheme: dark ? "dark" : "light" });
         await page.goto(`${base}/${hash}`);
@@ -250,6 +250,71 @@ try {
     const outils = await (await comme("lea", "tools")).json();
     // Demander : les sources dont se servent les agents de son département (compta, mail, fichiers), pas l'agenda ni le téléphone.
     assert.deepEqual([...new Set(outils.map((o) => o.connector))].sort(), ["compta", "fichiers", "mail"]);
+  });
+
+  await check("Atelier : créer un agent depuis un modèle, le ranger dans un département, le modifier", async () => {
+    const p = await browser.newPage();
+    await p.goto(`${base}/#/atelier`);
+    // Annuler puis rouvrir : le dialogue doit revenir (régression : l'écran le croyait encore ouvert).
+    await p.getByRole("button", { name: /Candidatures/ }).click();
+    await p.getByRole("dialog").getByRole("button", { name: "Annuler" }).click();
+    await p.getByRole("button", { name: /Factures impayées/ }).click();
+    assert.equal(await p.getByRole("dialog").getByLabel("Nom", { exact: true }).inputValue(), "Factures impayées");
+    const d = p.getByRole("dialog");
+    await d.getByLabel("Département").selectOption("comptabilite");
+    await d.getByRole("button", { name: "Créer l'agent" }).click();
+    await until("agent créé", async () => (await state()).agents.some((a) => a.id === "factures-impayees"));
+    const s = await state();
+    assert.ok(s.departements.find((x) => x.id === "comptabilite").agents.includes("factures-impayees"));
+    const lea = await (await comme("lea", "state")).json();
+    assert.ok(lea.agents.some((a) => a.id === "factures-impayees"), "Léa voit le nouvel agent de son département");
+    const sophie = await (await comme("sophie", "state")).json();
+    assert.ok(!sophie.agents.some((a) => a.id === "factures-impayees"));
+    await p.getByRole("button", { name: /^Comptabilité Factures impayées/ }).click();
+    await p.getByRole("dialog").getByLabel("Nom", { exact: true }).fill("Relances clients");
+    await p.getByRole("dialog").getByRole("button", { name: "Enregistrer" }).click();
+    await until("agent renommé", async () => (await state()).agents.find((a) => a.id === "factures-impayees")?.name === "Relances clients");
+    assert.match(readFileSync(join(dir, "data/atelier/agents/factures-impayees.md"), "utf8"), /^---\ndeclencheur: quotidien 08:00/);
+    await p.addScriptTag({ content: axe });
+    const r = await p.evaluate(() => axe.run(document, { runOnly: ["wcag2a", "wcag2aa", "wcag21aa"] }));
+    assert.deepEqual(r.violations.map((v) => v.id), []);
+    await p.close();
+  });
+
+  await check("Atelier : un département et les règles de l'entreprise, réservés au dirigeant", async () => {
+    const p = await browser.newPage();
+    await p.goto(`${base}/#/atelier`);
+    await p.getByRole("button", { name: "Nouveau département" }).click();
+    await p.getByLabel("Nom", { exact: true }).fill("Ventes");
+    await p.getByRole("checkbox", { name: "Sophie" }).check();
+    await p.getByRole("button", { name: "Créer le département" }).click();
+    await until("département créé", async () => (await (await comme("sophie", "state")).json()).departements.some((d) => d.id === "ventes"));
+    await p.locator("#regles").fill("Toujours vouvoyer les clients.");
+    await p.getByRole("button", { name: "Enregistrer les règles" }).click();
+    await p.getByText("Enregistré.").waitFor();
+    assert.equal(readFileSync(join(dir, "data/memory/regles.md"), "utf8"), "Toujours vouvoyer les clients.\n");
+    assert.equal((await comme("sophie", "atelier")).status, 403);
+    assert.equal((await comme("sophie", "atelier/agents", { method: "POST", body: JSON.stringify({ name: "X", consignes: "Fais n'importe quoi sans demander.", declencheur: "manuel" }) })).status, 403);
+    await p.close();
+  });
+
+  await check("⌘K : aller n'importe où au clavier, ou poser une question", async () => {
+    const p = await browser.newPage();
+    await p.goto(`${base}/#/`);
+    await p.waitForSelector("h1");
+    await p.keyboard.press("Control+k");
+    await p.getByRole("combobox").fill("atelier");
+    await p.addScriptTag({ content: axe });
+    const r = await p.evaluate(() => axe.run(document, { runOnly: ["wcag2a", "wcag2aa", "wcag21aa"] }));
+    assert.deepEqual(r.violations.map((v) => v.id), []);
+    await p.keyboard.press("Enter");
+    await p.waitForURL(/#\/atelier/);
+    await p.keyboard.press("Control+k");
+    await p.getByRole("combobox").fill("Qui paie en retard ce mois ?");
+    await p.keyboard.press("ArrowDown");
+    await p.getByRole("option", { name: /Demander : « Qui paie en retard/ }).click();
+    await p.waitForURL(/#\/demander\?q=/);
+    await p.close();
   });
 
   await check("un site extérieur ne peut pas piloter le daemon", async () => {

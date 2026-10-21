@@ -32,16 +32,18 @@ export interface Etat extends Ajoute {
 
 export class Connecteurs {
   private etats = new Map<string, Etat>();
-  /** Droits d'origine des agents (company.nix), avant ceux donnés par les connecteurs ajoutés. */
-  private base: Record<string, Record<string, string[]>>;
+  /** Droits déclarés des agents (company.nix, Atelier), avant ceux donnés par les connecteurs ajoutés. */
+  private declares: () => Record<string, Record<string, string[]>>;
 
   constructor(
     private bus: Bus,
     private cfg: CompanyConfig,
     private data: string,
     private secrets: string,
+    declares?: () => Record<string, Record<string, string[]>>,
   ) {
-    this.base = Object.fromEntries(Object.entries(cfg.agents).map(([id, a]) => [id, { ...a.connectors }]));
+    const fige = Object.fromEntries(Object.entries(cfg.agents).map(([id, a]) => [id, { ...a.connectors }]));
+    this.declares = declares ?? (() => fige);
   }
 
   /** Au démarrage : rebranche chaque connecteur ajouté. Un service injoignable n'empêche pas Nova de démarrer. */
@@ -122,9 +124,11 @@ export class Connecteurs {
   }
 
   /** Les droits des agents = company.nix + ce que le dirigeant a donné ici. Le moteur lit cfg à chaque appel. */
-  private droits() {
+  /** Recalcule les droits de chaque agent (après un changement dans l'Atelier, par exemple). */
+  droits() {
+    const base = this.declares();
     for (const [id, agent] of Object.entries(this.cfg.agents)) {
-      const r: Record<string, string[]> = { ...this.base[id] };
+      const r: Record<string, string[]> = { ...base[id] };
       for (const a of this.lire()) if (a.agents.includes(id)) r[a.id] = a.acces === "actions" ? ["read", "write"] : ["read"];
       agent.connectors = r;
     }

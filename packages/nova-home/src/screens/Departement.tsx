@@ -140,7 +140,7 @@ export function Departement({ state, id, now }: { state: State; id: string; now:
   );
 }
 
-function Recu({ r, de, now }: { r: Relais; de: string; now: Date }) {
+export function Recu({ r, de, now }: { r: Relais; de: string; now: Date }) {
   return (
     <div className="inset">
       <Phrase meta={`De ${de} · ${relative(r.cree, now)}`}>

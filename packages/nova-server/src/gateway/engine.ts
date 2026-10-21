@@ -79,6 +79,21 @@ export class Engine extends EventEmitter {
     };
   }
 
+  /** Un agent créé ou modifié dans l'Atelier : il apparaît tout de suite, son état et son autonomie sont gardés. */
+  ajouterAgent(id: string, a: CompanyConfig["agents"][string]) {
+    const actuel = this.agents.get(id);
+    this.agents.set(id, actuel ? { ...actuel, ...a, autonomy: actuel.autonomy } : { ...a, id, status: "disponible", appsInUse: [], pending: 0, streak: 0 });
+    this.changed();
+  }
+
+  /** Retirer un agent : refusé tant qu'il a une tâche en cours, en attente ou sur le point de partir. */
+  retirerAgent(id: string) {
+    if (this.tasks.some((t) => t.agentId === id && ["en-cours", "en-attente", "differe"].includes(t.status)))
+      throw new Conflict("Cet agent a encore une tâche en cours ou en attente : termine-la ou annule-la d'abord.");
+    this.agents.delete(id);
+    this.changed();
+  }
+
   agent(id: string) {
     const a = this.agents.get(id);
     if (!a) throw new NotFound(`Agent inconnu : ${id}`);

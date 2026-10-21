@@ -47,6 +47,11 @@ export function Agent({ state, id, now }: { state: State; id: string; now: Date 
               Mettre en pause
             </Button>
           )}
+          {moi.role === "dirigeant" && agent.skills?.[0]?.startsWith("atelier/") && (
+            <Button variant="discret" href="#/atelier">
+              Modifier dans l'Atelier
+            </Button>
+          )}
           {moi.agentsActifs && agent.status === "disponible" && !current && (
             <Button variant="principal" onClick={() => act(`agents/${id}/lancer`)}>
               Lancer maintenant
@@ -124,7 +129,7 @@ export function Agent({ state, id, now }: { state: State; id: string; now: Date 
           )}
 
           <Bloc title="Autonomie" id="autonomie">
-            <AutonomyPicker agent={agent} />
+            <AutonomyPicker agent={agent} lecture={moi.role !== "dirigeant"} />
           </Bloc>
         </div>
       </div>

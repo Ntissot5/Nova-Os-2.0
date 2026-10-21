@@ -21,6 +21,17 @@ Une entreprise = un fichier `company.nix` + un dossier `data/`. Zéro lock-in.
 |---|---|
 | ![Connecteurs](docs/captures/connecteurs.png) | ![Brancher un service](docs/captures/connecteurs-ajouter.png) |
 
+## Ce qu'on y fait
+
+- **Voir toute l'entreprise** : un espace par département, la direction voit tout, les agents travaillent en direct.
+- **Une seule liste « À faire »** : ce qui attend une validation, les dossiers reçus des autres départements, ce qui va partir.
+- **Construire son entreprise dans l'Atelier** : des départements, des agents décrits en phrases (à partir de modèles pour tous métiers), les règles de l'entreprise. Sans code.
+- **⌘K** pour aller partout et tout faire au clavier ; une phrase devient une question.
+
+| Accueil | Atelier |
+|---|---|
+| ![Accueil](docs/captures/accueil.png) | ![Atelier](docs/captures/atelier.png) |
+
 ## Essayer
 
 | Où | Comment |

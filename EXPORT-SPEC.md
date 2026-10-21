@@ -56,6 +56,7 @@ Uniquement des formats ouverts, chacun lisible avec un outil courant.
 | `journal/` | Chaque action d'humain ou d'agent | JSON Lines, un fichier par mois (`AAAA-MM.jsonl`) ; champs : `ts`, `qui`, `quoi`, `pourquoi`, `resultat`, et selon l'action `decision`, `tokens`, `coutUSD`, `modele`, `ms`, `tache` |
 | `agents/` | État des déclencheurs (mails déjà traités, dernière tournée) | JSON |
 | `mesures/` | Relevés hebdomadaires des heures | CSV `semaine;heures;saisiPar;date` |
+| `atelier/` | Ce que l'entreprise a construit dans l'Atelier | JSON `atelier.json` (`agents`, `departements`) ; un Markdown par agent dans `atelier/agents/<id>.md` (en-tête `declencheur`, `modele`, `tri`, `minutes`, puis ses consignes) |
 | `relais/` | Dossiers envoyés d'un département à un autre (« Envoyer à… ») | JSON `relais.json` : `id`, `de`, `par`, `vers`, `titre`, `message`, `tache`, `cree`, `traite` |
 | `connecteurs/` | Services branchés depuis l'écran Connecteurs (sans leurs jetons) | JSON `ajoutes.json` : `id`, `nom`, `url`, `agents`, `acces`, `toujoursValider`, `ajouteLe`, `ajoutePar` |
 | `secrets/` | Mots de passe et clés des services | YAML chiffré par [sops](https://github.com/getsops/sops) avec [age](https://age-encryption.org) |

@@ -1,8 +1,9 @@
 // L'espace Entreprise : toute la boîte en une vision, en tuiles de verre.
 
 import type { AgentState, State, Task } from "../../../nova-server/src/core/types";
-import { act, useMoi } from "../api";
-import { ReleveTile } from "./Mesures";
+import { act } from "../api";
+import { ouvrirPalette } from "../components/Palette";
+import { Recu } from "./Departement";
 import { couleurs } from "../components/Envoyer";
 import { Feed } from "../components/Feed";
 import { Page } from "../components/Shell";
@@ -10,7 +11,6 @@ import { AUTONOMY_LABEL, Bloc, Button, Doc, Monogram, Phrase, Undo, WhyButton } 
 import { duration, greeting, plural, relative } from "../format";
 
 export function Entreprise({ state, now }: { state: State; now: Date }) {
-  const moi = useMoi();
   const agents = new Map(state.agents.map((a) => [a.id, a]));
   const working = state.tasks.filter((t) => t.status === "en-cours");
   const pending = state.tasks.filter((t) => t.status === "en-attente");
@@ -18,6 +18,13 @@ export function Entreprise({ state, now }: { state: State; now: Date }) {
   const done = state.tasks.filter((t) => t.status === "terminee").slice(0, 5);
   const name = (t: Task) => agents.get(t.agentId)?.name ?? t.agentId;
   const featured = working[0];
+  // Ce qui attend la personne : ses validations, les dossiers reçus par ses départements, ce qui va partir.
+  const miens = new Set((state.departements ?? []).filter((d) => d.mien).map((d) => d.id));
+  const recus = (state.relais ?? []).filter((r) => !r.traite && miens.has(r.vers));
+  const aFaire = pending.length + recus.length + deferred.length;
+  // La direction voit les départements des autres ; un employé voit directement ses agents.
+  const vueDirection = (state.departements ?? []).some((d) => !d.mien);
+  const nomDep = (x: string) => (x === "direction" ? "Direction" : (state.annuaire?.find((d) => d.id === x)?.name ?? x));
 
   return (
     <Page>
@@ -26,15 +33,18 @@ export function Entreprise({ state, now }: { state: State; now: Date }) {
           <h1 className="display">
             {greeting(now)} {state.me}.
           </h1>
-          <p className="muted">{summary(working.length, pending.length)}</p>
+          <p className="muted">{summary(working.length, aFaire)}</p>
         </div>
         <div className="actions">
           {state.demo && <span className="pill">Démonstration : données fictives</span>}
-          {pending.length > 0 && (
-            <a className="pill pill-accent" href="#attente-titre">
-              {pending.length} à valider
+          {aFaire > 0 && (
+            <a className="pill pill-accent" href="#afaire-titre">
+              {aFaire} à faire
             </a>
           )}
+          <button type="button" className="pill pill-bouton" onClick={ouvrirPalette} aria-keyshortcuts="Meta+K Control+K">
+            Aller à… <kbd>⌘K</kbd>
+          </button>
         </div>
       </header>
 
@@ -59,9 +69,11 @@ export function Entreprise({ state, now }: { state: State; now: Date }) {
             )}
           </Bloc>
 
-          {state.departements?.length ? (
+          {state.agents.length === 0 && (state.departements ?? []).every((d) => d.agents.length === 0) ? (
+            <Demarrer />
+          ) : vueDirection ? (
             <nav aria-label="Départements" className="deps-row">
-              {state.departements.map((d) => (
+              {(state.departements ?? []).map((d) => (
                 <DepTile key={d.id} d={d} state={state} />
               ))}
             </nav>
@@ -93,45 +105,31 @@ export function Entreprise({ state, now }: { state: State; now: Date }) {
         </div>
 
         <div className="span-4 stack">
-          <Bloc title="En attente de toi" id="attente" aside={pending.length > 0 && <span className="caption">{pending.length}</span>}>
-            {pending.length ? (
+          <Bloc title="À faire" id="afaire" className="glass-strong" aside={aFaire > 0 && <span className="pill pill-accent">{aFaire}</span>}>
+            {aFaire ? (
               <ul className="list">
                 {pending.map((t) => (
                   <li key={t.id}>
                     <Approval task={t} agentName={name(t)} />
                   </li>
                 ))}
-              </ul>
-            ) : (
-              <p className="muted">Rien n'attend ta validation.</p>
-            )}
-          </Bloc>
-          {deferred.length > 0 && (
-            <Bloc title="Va partir" id="differe">
-              <ul className="list">
+                {recus.map((r) => (
+                  <li key={r.id}>
+                    <Recu r={r} de={nomDep(r.de)} now={now} />
+                  </li>
+                ))}
                 {deferred.map((t) => (
                   <li key={t.id}>
                     <Undo task={t} now={now} agentName={name(t)} />
                   </li>
                 ))}
               </ul>
-            </Bloc>
-          )}
-          {(state.relais?.length ?? 0) > 0 && <RelaisTile state={state} now={now} />}
-          {moi.role === "dirigeant" && <ReleveTile now={now} />}
-          <Bloc
-            title="Ce que ça t'a fait gagner"
-            id="gains"
-            aside={
-              moi.role === "dirigeant" && (
-                <span className="caption actions">
-                  <a href="#/couts">Coûts</a>
-                  <a href="#/flotte">Flotte</a>
-                  <a href="#/connecteurs">Connecteurs</a>
-                </span>
-              )
-            }
-          >
+            ) : (
+              <p className="muted">Rien à faire. Les agents te préviennent ici dès qu'ils ont besoin de toi.</p>
+            )}
+          </Bloc>
+          {vueDirection && (state.relais?.length ?? 0) > 0 && <RelaisTile state={state} now={now} />}
+          <Bloc title="Ce que ça t'a fait gagner" id="gains">
             <div className="phrase">
               <p className="chiffre">{duration(state.gains.minutesThisWeek)}</p>
               <p className="caption">de travail administratif cette semaine, sur {plural(state.gains.tasksThisWeek, "tâche", "tâches")}.</p>
@@ -290,11 +288,38 @@ export function Approval({ task, agentName }: { task: Task; agentName: string })
   );
 }
 
-function summary(working: number, pending: number) {
+function summary(working: number, aFaire: number) {
   return [
     working ? `${plural(working, "agent travaille", "agents travaillent")} en ce moment.` : "Aucun agent ne travaille en ce moment.",
-    pending ? `${plural(pending, "action attend", "actions attendent")} ta validation.` : "Rien n'attend ta validation.",
+    aFaire ? `${plural(aFaire, "chose t'attend", "choses t'attendent")}.` : "Rien ne t'attend.",
   ].join(" ");
+}
+
+/** Une entreprise toute neuve : trois pas pour démarrer, sans manuel. */
+function Demarrer() {
+  return (
+    <Bloc title="Construis ton entreprise" id="demarrer" className="glass-strong">
+      <ol className="etapes">
+        <li>
+          <Phrase meta="Gérance, Comptabilité, Ventes… et qui en fait partie.">Crée tes départements</Phrase>
+        </li>
+        <li>
+          <Phrase meta="Pars d'un modèle (boîte de réception, factures impayées, demandes clients…) ou décris-le en quelques phrases.">Crée ton premier agent</Phrase>
+        </li>
+        <li>
+          <Phrase meta="Outlook en un clic, ou n'importe quel service.">Branche tes outils</Phrase>
+        </li>
+      </ol>
+      <div className="actions">
+        <Button variant="principal" href="#/atelier">
+          Ouvrir l'Atelier
+        </Button>
+        <Button variant="secondaire" href="#/connecteurs">
+          Brancher Microsoft 365
+        </Button>
+      </div>
+    </Bloc>
+  );
 }
 
 function status(a: AgentState, state: State) {

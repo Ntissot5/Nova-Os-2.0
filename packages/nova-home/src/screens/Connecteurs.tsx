@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { act } from "../api";
 import { Page } from "../components/Shell";
-import { Bloc, Button, Phrase } from "../components/ui";
+import { Bloc, Button, Phrase, useDialogue } from "../components/ui";
 import { plural, relative } from "../format";
 
 interface Ajoute {
@@ -237,9 +237,7 @@ function Dialogue({ form, agents, onClose, onDone }: { form: Formulaire; agents:
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState<string>();
 
-  useEffect(() => {
-    ref.current?.showModal();
-  }, []);
+  useDialogue(ref, onClose);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -258,7 +256,7 @@ function Dialogue({ form, agents, onClose, onDone }: { form: Formulaire; agents:
   }
 
   return (
-    <dialog ref={ref} aria-labelledby="connecteur-titre" onClose={onClose}>
+    <dialog ref={ref} aria-labelledby="connecteur-titre">
       <form className="stack" style={{ gap: "var(--space-3)" }} onSubmit={submit}>
         <h2 className="title" id="connecteur-titre">
           {existant ? `Régler ${existant.nom}` : form.mode === "ajouter" && form.fiche ? `Brancher ${form.fiche.nom}` : "Brancher un service"}

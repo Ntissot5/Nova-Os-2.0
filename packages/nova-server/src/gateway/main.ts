@@ -27,6 +27,7 @@ import { Bus, Forbidden } from "./bus.js";
 import { CATALOGUE } from "./catalogue.js";
 import { Connecteurs, Inconnu, Invalide } from "./connecteurs.js";
 import { Microsoft365 } from "./microsoft.js";
+import { Atelier, Introuvable as AtelierInconnu, Invalide as AtelierInvalide } from "./atelier.js";
 import { Departements } from "./departements.js";
 import { Introuvable, Invalide as RelaisInvalide, RelaisStore } from "./relais.js";
 import { Conflict, Engine, NotFound } from "./engine.js";
@@ -50,7 +51,9 @@ const bus = new Bus(journal, { ...connectorEnv, NOVA_DATA: data });
 const microsoft = new Microsoft365(bus, journal, data, secrets, env.NOVA_MICROSOFT_CLIENT_ID || undefined, env.NOVA_MICROSOFT_TENANT || "organizations", demo);
 microsoft.configurer();
 await bus.start();
-const connecteurs = new Connecteurs(bus, cfg, data, secrets);
+// L'Atelier ajoute à company.nix ce que l'entreprise a construit elle-même (agents, départements).
+const atelier = new Atelier(cfg, data, () => bus.droitsDisponibles());
+const connecteurs = new Connecteurs(bus, cfg, data, secrets, () => atelier.declares());
 await connecteurs.start();
 
 const acces = new Acces(data);
@@ -63,8 +66,10 @@ const claude = env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN ? new Anthropic
 const skills = new Map<string, Skill>();
 for (const [id, a] of Object.entries(cfg.agents)) {
   const first = a.skills?.[0];
-  if (first && env.NOVA_SKILLS) skills.set(id, loadSkill(env.NOVA_SKILLS, first));
+  if (first?.startsWith("atelier/")) skills.set(id, atelier.skill(id)!);
+  else if (first && env.NOVA_SKILLS) skills.set(id, loadSkill(env.NOVA_SKILLS, first));
 }
+atelier.brancher({ ajouterAgent: (id, a) => engine.ajouterAgent(id, a), retirerAgent: (id) => engine.retirerAgent(id), skills, droits: () => connecteurs.droits() });
 const memory = () => {
   try {
     return readFileSync(join(data, "memory", "regles.md"), "utf8");
@@ -90,7 +95,7 @@ const agentDe = (id: string, who: string) => {
   deps.exigerAgent(personne(who), id);
   return id;
 };
-const triggers = claude && skills.size ? new Triggers({ engine, bus, journal, create: (p) => claude.beta.messages.create(p), cfg, skills, data, memory }) : undefined;
+const triggers = claude && (skills.size || !demo) ? new Triggers({ engine, bus, journal, create: (p) => claude.beta.messages.create(p), cfg, skills, data, memory }) : undefined;
 if (triggers) {
   triggers.start();
   engine.on("change", () => triggers.drain());
@@ -228,6 +233,56 @@ const routes: [string, RegExp, Handler][] = [
       journal.write({ qui: who, quoi: "connecteur.retirer", pourquoi: m[1] });
     },
   ],
+  ["GET", /^\/api\/atelier$/, (_m, _b, who) => (dirigeant(who), atelier.vue())],
+  [
+    "POST",
+    /^\/api\/atelier\/agents$/,
+    (_m, body, who) => {
+      dirigeant(who);
+      const a = atelier.enregistrerAgent(body ?? {}, who);
+      journal.write({ qui: who, quoi: "atelier.agent", pourquoi: `${a.name} (${a.declencheur})` });
+      return a;
+    },
+  ],
+  [
+    "POST",
+    /^\/api\/atelier\/agents\/([\w-]+)\/supprimer$/,
+    (m, _b, who) => {
+      dirigeant(who);
+      atelier.supprimerAgent(m[1]!);
+      journal.write({ qui: who, quoi: "atelier.agent.supprimer", pourquoi: m[1] });
+    },
+  ],
+  [
+    "POST",
+    /^\/api\/atelier\/departements$/,
+    (_m, body, who) => {
+      dirigeant(who);
+      const d = atelier.enregistrerDepartement(body ?? {});
+      journal.write({ qui: who, quoi: "atelier.departement", pourquoi: d.name });
+      engine.emit("change");
+      return d;
+    },
+  ],
+  [
+    "POST",
+    /^\/api\/atelier\/departements\/([\w-]+)\/supprimer$/,
+    (m, _b, who) => {
+      dirigeant(who);
+      atelier.supprimerDepartement(m[1]!);
+      journal.write({ qui: who, quoi: "atelier.departement.supprimer", pourquoi: m[1] });
+      engine.emit("change");
+    },
+  ],
+  [
+    "POST",
+    /^\/api\/atelier\/regles$/,
+    (_m, body, who) => {
+      dirigeant(who);
+      atelier.enregistrerRegles(body?.texte);
+      journal.write({ qui: who, quoi: "atelier.regles" });
+    },
+  ],
   ["GET", /^\/api\/microsoft$/, (_m, _b, who) => (dirigeant(who), microsoft.etat())],
   ["POST", /^\/api\/microsoft\/connecter$/, (_m, _b, who) => (dirigeant(who), microsoft.connecter(who))],
   ["POST", /^\/api\/microsoft\/deconnecter$/, (_m, _b, who) => (dirigeant(who), microsoft.deconnecter(who))],
@@ -264,7 +319,7 @@ const server = createServer(async (req, res) => {
     }
     send(res, 404, { erreur: "Route inconnue." });
   } catch (e) {
-    const status = e instanceof NotFound || e instanceof Inconnu || e instanceof Introuvable ? 404 : e instanceof Conflict ? 409 : e instanceof BadRequest || e instanceof Invalide || e instanceof RelaisInvalide ? 400 : e instanceof Forbidden ? 403 : 500;
+    const status = e instanceof NotFound || e instanceof Inconnu || e instanceof Introuvable || e instanceof AtelierInconnu ? 404 : e instanceof Conflict ? 409 : e instanceof BadRequest || e instanceof Invalide || e instanceof RelaisInvalide || e instanceof AtelierInvalide ? 400 : e instanceof Forbidden ? 403 : 500;
     if (status === 500) console.error(e);
     send(res, status, { erreur: e instanceof Error ? e.message : String(e) });
   }
