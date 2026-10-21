@@ -39,8 +39,8 @@ jobs:
       - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: system-features = nixos-test benchmark big-parallel kvm
-      - name: Test de bout en bout du poste
-        run: nix build .#checks.x86_64-linux.vm-demo -L
+      - name: Test de bout en bout du poste et des connecteurs réels (Dovecot, Mailpit, Radicale)
+        run: nix build .#checks.x86_64-linux.vm-demo .#checks.x86_64-linux.connecteurs-reels -L
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -151,18 +151,16 @@ in
       };
     }];
 
-    # nova-daemon : l'API locale du poste, lancée avec la session de chaque personne.
+    # nova-daemon : l'API locale du poste (interface + relais vers le Hub), lancée avec la session.
     systemd.user.services.nova-daemon = {
       description = "Nova : API locale du poste";
       wantedBy = [ "graphical-session.target" ];
       partOf = [ "graphical-session.target" ];
       environment = {
-        NOVA_COMPANY = "/etc/nova/company.json";
+        NOVA_GATEWAY = "http://127.0.0.1:7700"; # Phase 0-1 : Hub et poste sur la même machine
         NOVA_HOME_DIR = "${nova}/share/nova-home";
         NOVA_THEME_CSS = "${theme}";
-        NOVA_DATA = "/var/lib/nova/data";
         NOVA_PORT = toString port;
-        NOVA_DEMO = if cfg.demo then "1" else "0";
       };
       path = [ pkgs.glib.bin ]; # gdbus, pour les pastilles du dock
       serviceConfig = {

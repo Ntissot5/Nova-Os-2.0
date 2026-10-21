@@ -12,6 +12,8 @@ pkgs.testers.runNixOSTest {
 
   testScript = { nodes, ... }:
     let user = nodes.machine.services.displayManager.autoLogin.user; in ''
+      machine.wait_for_unit("nova-gateway.service")
+      machine.wait_for_open_port(7700)
       machine.wait_for_unit("display-manager.service")
       machine.wait_until_succeeds("pgrep -u ${user} gnome-shell", timeout=300)
       machine.wait_for_unit("nova-daemon.service", "${user}")
@@ -29,6 +31,23 @@ pkgs.testers.runNixOSTest {
 
       with subtest("le journal s'écrit dans data/"):
           machine.wait_until_succeeds("ls /var/lib/nova/data/journal/*.jsonl", timeout=60)
+
+      with subtest("les données de départ sont en place, modifiables par le gardien seul"):
+          machine.succeed("test -f /var/lib/nova/data/compta/loyers.csv")
+          machine.succeed("test -f /var/lib/nova/data/.initialise")
+          machine.succeed("sudo -u nova-gateway touch /var/lib/nova/data/compta/.essai")
+          machine.fail("sudo -u nobody ls /var/lib/nova/data")
+
+      with subtest("les agents agissent à travers les connecteurs (brouillons réels)"):
+          machine.wait_until_succeeds("ls /var/lib/nova/data/mail/.Brouillons/cur/ | grep -q nova", timeout=120)
+
+      with subtest("le Hub refuse une personne inconnue"):
+          code = machine.succeed("curl -s -o /dev/null -w '%{http_code}' -H 'x-nova-person: intrus' http://127.0.0.1:7700/api/state")
+          assert code.strip() == "401", code
+
+      with subtest("sans clé d'API, une question reçoit une phrase claire"):
+          out = machine.succeed("curl -sN -X POST -H 'x-nova: 1' -H 'content-type: application/json' -d '{\"question\":\"Qui est en retard ?\"}' http://127.0.0.1:7777/api/ask")
+          assert "il manque la clé" in out, out
 
       with subtest("le poste se signale prêt"):
           machine.wait_for_unit("nova-pret.service")

@@ -35,6 +35,15 @@
 
 **Mesure :** `scripts/bench-question` — 20 questions types multi-sources, temps médian et p95. Cible : p95 < 10 s.
 
+**État (21 octobre 2026) :**
+- ✓ `nova-gateway` : connecteurs, droits par agent, journal, autonomie appliquée sur l'aperçu des connecteurs, actions des agents exécutées sur le bus.
+- ✓ 5 connecteurs, 16 tests de contrat (vrai serveur et vrai client MCP).
+- ⏳ Fournisseurs réels IMAP/SMTP et CalDAV : test VM contre Dovecot, Mailpit et Radicale (`checks.connecteurs-reels`), résultat à confirmer.
+- ✓ Questions en langage naturel (`/`, rail, barre du haut), étapes visibles, sources citées ; boucle testée avec un faux modèle.
+- ⏳ Mesure p95 : en attente d'une clé d'API Anthropic sur le Hub.
+- ⏳ Authentification OIDC : reportée au premier poste distant (D-020).
+- ⏳ Microsoft Graph (mail et agenda) et API du logiciel comptable : avec le logiciel du pilote.
+
 ## Phase 2 — Agents visibles & autonomie (semaines 6–9)
 
 - Vertical **gérance** : agent **tri des demandes locataires** (qualification, urgence, routage) et agent **relances de loyers** (validation humaine obligatoire).
