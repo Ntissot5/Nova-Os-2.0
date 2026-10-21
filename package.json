@@ -1,0 +1,21 @@
+{
+  "name": "nova-os",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w nova-daemon && npm run build -w nova-home",
+    "test": "npm test -w nova-daemon",
+    "test:ui": "node tests/ui.mjs",
+    "typecheck": "npm run typecheck --workspaces",
+    "dev": "scripts/dev"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "axe-core": "4.11.3",
+    "playwright": "1.56.1"
+  }
+}

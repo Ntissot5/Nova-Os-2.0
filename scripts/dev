@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Lance Nova Home en développement avec l'entreprise de démonstration :
+#   scripts/dev [entreprise]   → http://127.0.0.1:5173
+set -euo pipefail
+cd "$(dirname "$0")/.."
+company=${1:-demo}
+state=${XDG_STATE_HOME:-$HOME/.local/state}/nova-dev
+mkdir -p "$state"
+
+nix eval --raw ".#companyJson.$company" > "$state/company.json"
+accent=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1])).brand.accent)' "$state/company.json")
+node design/build.mjs theme "$accent" "$state/theme.css"
+
+npm run build -w nova-daemon >/dev/null
+NOVA_COMPANY="$state/company.json" NOVA_THEME_CSS="$state/theme.css" NOVA_DATA="$state/data" NOVA_DEMO=1 \
+  node packages/nova-daemon/dist/server.js &
+trap 'kill $!' EXIT
+npm run dev -w nova-home
