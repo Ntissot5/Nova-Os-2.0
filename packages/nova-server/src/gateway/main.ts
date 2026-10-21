@@ -11,6 +11,7 @@
 //   NOVA_DEMO, NOVA_DEMO_SPEED   scénarios de démonstration
 //   ANTHROPIC_API_KEY     clé d'API (fichier secret sops) ; sans elle, les questions sont désactivées
 //   NOVA_MAIL_*, NOVA_AGENDA_*   fournisseurs réels des connecteurs (voir connectors/)
+//   NOVA_SKILLS           dossier des métiers (verticals/), où vivent les skills des agents
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
@@ -22,6 +23,9 @@ import { ask } from "./ask.js";
 import { Bus, Forbidden, READ_ALL } from "./bus.js";
 import { Conflict, Engine, NotFound } from "./engine.js";
 import { startDemo } from "./demo.js";
+import { loadSkill, type Skill } from "./skills.js";
+import { Triggers } from "./triggers.js";
+import { costs, readReleves, saveReleve } from "./mesures.js";
 
 const env = process.env;
 const cfg: CompanyConfig = JSON.parse(readFileSync(required("NOVA_COMPANY"), "utf8"));
@@ -36,9 +40,27 @@ const bus = new Bus(journal, { ...connectorEnv, NOVA_DATA: data });
 await bus.start();
 
 const engine = new Engine(cfg, journal, { demo, speed: Number(env.NOVA_DEMO_SPEED ?? 1), me: "", bus });
-if (demo) startDemo(engine);
-
 const claude = env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN ? new Anthropic() : undefined;
+
+// Les agents : avec une clé d'API, de vrais agents Claude travaillent sur les données de l'entreprise
+// (y compris en démonstration). Sans clé, la démonstration joue des scénarios écrits d'avance.
+const skills = new Map<string, Skill>();
+for (const [id, a] of Object.entries(cfg.agents)) {
+  const first = a.skills?.[0];
+  if (first && env.NOVA_SKILLS) skills.set(id, loadSkill(env.NOVA_SKILLS, first));
+}
+const memory = () => {
+  try {
+    return readFileSync(join(data, "memory", "regles.md"), "utf8");
+  } catch {
+    return "";
+  }
+};
+const triggers = claude && skills.size ? new Triggers({ engine, bus, journal, create: (p) => claude.beta.messages.create(p), cfg, skills, data, memory }) : undefined;
+if (triggers) {
+  triggers.start();
+  engine.on("change", () => triggers.drain());
+} else if (demo) startDemo(engine);
 
 // ---------- Diffusion en direct (SSE) ----------
 
@@ -60,12 +82,26 @@ const AUTONOMY: Autonomy[] = ["je-valide-tout", "je-valide-l-important", "autono
 type Handler = (m: RegExpMatchArray, body: any, who: string) => unknown;
 
 const routes: [string, RegExp, Handler][] = [
+  ["GET", /^\/api\/moi$/, (_m, _b, who) => ({ role: cfg.people[who.replace(/^humain:/, "")]?.role, agentsActifs: Boolean(triggers) })],
   ["GET", /^\/api\/tools$/, () => bus.tools(READ_ALL).map(({ name, connector, title, right }) => ({ name, connector, title, right }))],
   ["POST", /^\/api\/approvals\/(\w+)\/valider$/, (m, _b, who) => engine.approve(m[1]!, who)],
   ["POST", /^\/api\/approvals\/(\w+)\/refuser$/, (m, _b, who) => engine.refuse(m[1]!, who)],
   ["POST", /^\/api\/tasks\/(\w+)\/annuler$/, (m, _b, who) => engine.cancel(m[1]!, who)],
   ["POST", /^\/api\/tasks\/(\w+)\/arreter$/, (m, _b, who) => engine.stop(m[1]!, who)],
   ["POST", /^\/api\/agents\/([\w-]+)\/pause$/, (m, _b, who) => engine.pause(m[1]!, who)],
+  [
+    "POST",
+    /^\/api\/agents\/([\w-]+)\/lancer$/,
+    (m, _b, who) => {
+      if (!triggers) throw new Conflict("Les agents Claude ne sont pas encore activés : il manque la clé d'API Anthropic sur le Hub.");
+      engine.agent(m[1]!);
+      journal.write({ qui: who, quoi: "lancer", agent: m[1] });
+      triggers.runNow(m[1]!);
+    },
+  ],
+  ["GET", /^\/api\/couts$/, (_m, _b, who) => (dirigeant(who), costs(join(data, "journal"), new Date()))],
+  ["GET", /^\/api\/releves$/, () => readReleves(data)],
+  ["POST", /^\/api\/releves$/, (_m, body, who) => (dirigeant(who), saveReleve(data, body, who))],
   ["POST", /^\/api\/agents\/([\w-]+)\/reprendre$/, (m, _b, who) => engine.resume(m[1]!, who)],
   [
     "POST",
@@ -146,6 +182,10 @@ async function question(res: ServerResponse, q: unknown, who: string) {
     emit({ type: "erreur", text });
   }
   res.end();
+}
+
+function dirigeant(who: string) {
+  if (cfg.people[who.replace(/^humain:/, "")]?.role !== "dirigeant") throw new Forbidden("Réservé au dirigeant.");
 }
 
 function name(person: string) {

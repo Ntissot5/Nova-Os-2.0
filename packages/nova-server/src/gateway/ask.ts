@@ -7,6 +7,7 @@ import type { Journal } from "../core/journal.js";
 import type { AskEvent } from "../core/types.js";
 import { type Bus, type Rights } from "./bus.js";
 import { addUsage, costUSD, type Usage } from "./cost.js";
+import { stepText } from "./steps.js";
 
 type Params = Anthropic.Beta.Messages.MessageCreateParamsNonStreaming;
 type Message = Anthropic.Beta.Messages.BetaMessage;
@@ -26,37 +27,6 @@ Règles :
 - N'invente rien : si l'information n'est pas dans les sources, dis-le simplement.
 - Montants en francs suisses au format 1’240.50 CHF. Dates relatives quand c'est plus clair (« demain à 10 h »).
 - Tu ne fais aucune action : tu lis et tu réponds.`;
-}
-
-/** Phrase affichée pendant qu'un outil est consulté. */
-export function stepText(tool: string, args: Record<string, unknown>) {
-  const q = (k: string) => (typeof args[k] === "string" && args[k] ? ` « ${args[k]} »` : "");
-  switch (tool) {
-    case "mail_chercher":
-      return `Je cherche dans les mails${q("texte") || q("expediteur")}…`;
-    case "mail_lire":
-      return "Je lis un mail…";
-    case "agenda_evenements":
-      return `Je regarde l'agenda du ${String(args.du ?? "")} au ${String(args.au ?? "")}…`;
-    case "compta_loyers":
-      return `Je regarde les loyers de ${String(args.mois ?? "")} dans la compta…`;
-    case "compta_retards":
-      return "Je cherche les loyers en retard dans la compta…";
-    case "compta_paiements":
-      return "Je regarde les paiements reçus…";
-    case "compta_factures":
-      return "Je regarde les factures fournisseurs…";
-    case "fichiers_chercher":
-      return `Je cherche dans les fichiers${q("query")}…`;
-    case "fichiers_lire":
-      return `Je lis ${String(args.path ?? "un fichier")}…`;
-    case "fichiers_lister":
-      return "Je parcours les dossiers…";
-    case "telephone_appels":
-      return "Je regarde le journal d'appels…";
-    default:
-      return "Je consulte une source…";
-  }
 }
 
 export async function ask(
