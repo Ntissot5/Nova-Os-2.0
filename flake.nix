@@ -46,6 +46,7 @@
 
       checks.${system} = {
         unit = self.packages.${system}.nova;
+        connecteurs-reels = import ./tests/connecteurs-reels.nix { inherit self pkgs; };
       } // lib.mapAttrs' (name: _: lib.nameValuePair "vm-${name}" (import ./tests/vm.nix { inherit self pkgs name; })) companies;
 
       devShells.${system}.default = pkgs.mkShell { packages = [ pkgs.nodejs_22 pkgs.prefetch-npm-deps ]; };

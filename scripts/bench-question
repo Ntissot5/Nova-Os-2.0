@@ -1,0 +1,57 @@
+#!/usr/bin/env node
+// Mesure de la Phase 1 : 20 questions types, temps jusqu'à la réponse, médiane et p95 (cible : p95 < 10 s).
+//   scripts/bench-question [http://127.0.0.1:7700] [personne]
+// Parle directement au gardien du Hub, qui doit avoir une clé d'API Anthropic.
+
+const gateway = process.argv[2] ?? "http://127.0.0.1:7700";
+const person = process.argv[3] ?? "noa";
+
+const QUESTIONS = [
+  "Qui est en retard de loyer, et est-ce que l'un d'eux nous a écrit ?",
+  "Qu'est-ce que j'ai dans l'agenda cette semaine ?",
+  "Mme Rossi nous a-t-elle appelés ou écrit aujourd'hui ?",
+  "Quelles factures fournisseurs restent à payer, et pour combien au total ?",
+  "Combien de loyers d'octobre ont été payés ?",
+  "Qui est le concierge de la Rue du Lac 14 et comment le joindre ?",
+  "Y a-t-il des places de parc libres à l'Avenue des Alpes 3 ?",
+  "Quels appels avons-nous manqués cette semaine ?",
+  "Que dit la procédure en cas d'urgence ?",
+  "Quand est la prochaine assemblée de copropriétaires ?",
+  "Mme Berset a-t-elle payé son loyer d'octobre ? Que nous a-t-elle écrit ?",
+  "Quel est le loyer de Mme Rossi ?",
+  "Combien la régie a-t-elle reçu en loyers entre le 1er et le 10 octobre ?",
+  "La facture de Sanitaires Morel correspond à quoi ?",
+  "M. Keller a-t-il appelé ou écrit récemment ? À quel sujet ?",
+  "Quels rendez-vous ont lieu à la Rue du Lac 14 ?",
+  "Le concierge a-t-il signalé un problème cette semaine ?",
+  "M. Dupont a-t-il prévenu de son retard de paiement ?",
+  "Quel est le solde de M. Ochsner pour octobre ?",
+  "Résume ce qui demande mon attention aujourd'hui, en trois points.",
+];
+
+async function ask(question) {
+  const started = performance.now();
+  const res = await fetch(`${gateway}/api/ask`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-nova-person": person },
+    body: JSON.stringify({ question }),
+  });
+  const text = await res.text();
+  const ms = performance.now() - started;
+  const last = text.trim().split("\n\n").at(-1) ?? "";
+  const data = JSON.parse(last.split("\n").find((l) => l.startsWith("data: "))?.slice(6) ?? "{}");
+  return { ms, ok: data.type === "reponse", text: data.text ?? "", sources: data.sources ?? [] };
+}
+
+const results = [];
+for (const q of QUESTIONS) {
+  const r = await ask(q);
+  results.push(r);
+  console.log(`${(r.ms / 1000).toFixed(1).padStart(5)} s  ${r.ok ? "✓" : "✗"}  ${q}\n          ${r.text}  [${r.sources.join(", ")}]`);
+}
+
+const times = results.map((r) => r.ms).sort((a, b) => a - b);
+const pct = (p) => times[Math.min(times.length - 1, Math.ceil((p / 100) * times.length) - 1)];
+const multi = results.filter((r) => r.sources.length >= 3).length;
+console.log(`\nMédiane : ${(pct(50) / 1000).toFixed(1)} s · p95 : ${(pct(95) / 1000).toFixed(1)} s · réponses : ${results.filter((r) => r.ok).length}/${results.length} · questions sur 3 sources ou plus : ${multi}`);
+process.exit(pct(95) < 10_000 && results.every((r) => r.ok) ? 0 : 1);

@@ -1,6 +1,6 @@
 // La page d'un agent : on le regarde travailler en direct, on règle son autonomie, on relit ce qu'il a fait.
 
-import type { AgentState, State, Task } from "../../../nova-daemon/src/types";
+import type { AgentState, State, Task } from "../../../nova-server/src/core/types";
 import { act } from "../api";
 import { APP_NAMES } from "../apps";
 import { Feed } from "../components/Feed";

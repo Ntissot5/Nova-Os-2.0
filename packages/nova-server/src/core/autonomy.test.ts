@@ -30,14 +30,20 @@ test("autonome : même un envoi massif garde le délai d'annulation", () => {
 });
 
 test("un paiement au-dessus du plafond est toujours validé, même en autonome", () => {
-  const pay: Action = { tool: "compta.payment", summary: "Payer", sensitive: true, amountCHF: 1200, why };
+  const pay: Action = { tool: "compta_payer", summary: "Payer", sensitive: true, amountCHF: 1200, why };
   const d = decide(pay, "autonome", limits);
   assert.equal(d.kind, "validation");
   assert.match(d.kind === "validation" ? d.reason : "", /500 CHF/);
 });
 
+test("le plafond tient quel que soit le nom de l'outil (montant donné par l'aperçu)", () => {
+  for (const tool of ["compta_payer", "banque_virement", "autre_outil"]) {
+    assert.equal(decide({ tool, summary: "Payer", sensitive: true, amountCHF: 501, why }, "autonome", limits).kind, "validation", tool);
+  }
+});
+
 test("un petit paiement en autonome part après le délai", () => {
-  const pay: Action = { tool: "compta.payment", summary: "Payer", sensitive: true, amountCHF: 80, why };
+  const pay: Action = { tool: "compta_payer", summary: "Payer", sensitive: true, amountCHF: 80, why };
   assert.equal(decide(pay, "autonome", limits).kind, "differe");
 });
 

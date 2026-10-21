@@ -56,7 +56,33 @@ Règle : une couche ne parle qu'à la couche directement voisine, via une interf
   4. **diffuse en direct** chaque étape de chaque agent vers les postes autorisés (§3.6) ;
   5. **journalise** chaque appel (§6).
 - Ajouter un logiciel = ajouter un serveur MCP et une ligne dans `company.nix`. Jamais d'intégration sur mesure dans le shell ou dans un agent.
-- Transport : MCP « Streamable HTTP » sur socket Unix locale au Hub, exposé aux postes via le gateway en HTTPS + OIDC.
+- Transport : chaque connecteur est un processus MCP (stdio) lancé par `nova-gateway`, qui est le seul à leur parler (D-019).
+
+**Mise en œuvre (Phase 1)**
+
+| Connecteur | Outils | Format ouvert dans `data/` | Fournisseur réel |
+|---|---|---|---|
+| Fichiers | `fichiers_chercher`, `_lister`, `_lire`, `_ecrire`, `_supprimer`* | `files/` | (le dossier lui-même) |
+| Mail | `mail_chercher`, `_lire`, `_brouillon`, `_envoyer`* | `mail/` (Maildir, `.eml`) | IMAP + SMTP |
+| Agenda | `agenda_evenements`, `_creer` | `agenda/*.ics` (iCalendar) | CalDAV |
+| Compta | `compta_loyers`, `_retards`, `_paiements`, `_factures`, `_payer`* | `compta/*.csv` | API du logiciel du pilote (à venir) |
+| Téléphone | `telephone_appels` | `telephonie/appels.csv` | export de la centrale |
+
+\* outil sensible. Conventions lues par le gardien dans les métadonnées MCP de chaque outil :
+- `nova/right` : le droit nécessaire dans `company.nix` (`read`, `draft`, `send`, `payment`, `write`, `delete`) ;
+- `nova/sensitive` : l'outil agit sur le monde. Il accepte `dryRun: true` et renvoie un **aperçu** (résumé, montant, nombre de destinataires, destinataire inconnu) sans rien faire. C'est cet aperçu, produit par le connecteur et non par l'agent, qui alimente la décision d'autonomie (§3.5).
+
+**Les processus**
+
+```
+Poste (session de Noa)                     Hub (service système)
+nova-home ──► nova-daemon :7777 ──relais──► nova-gateway :7700 ──MCP──► 5 connecteurs ──► data/ ou serveurs réels
+              (interface, pastilles)  X-Nova-Person   (droits, autonomie, journal, agents, questions)
+```
+
+- `nova-gateway` tourne sous un utilisateur dédié, ne peut écrire que dans `data/` et lit ses secrets (clé d'API, mots de passe IMAP/CalDAV) dans un fichier fourni par sops-nix (`nova.secretsFile`).
+- `nova-daemon` sert l'interface et relaie vers le Hub en y ajoutant l'identité de la personne du poste.
+- Identité, Phase 1 : Hub et poste sont sur la même machine et ne parlent qu'en local ; le gardien refuse toute personne absente de `company.nix`. L'authentification Authentik (OIDC) arrive avec le premier poste distant (D-020).
 
 ### 3.3 Couche 3 — Runtime d'agents
 

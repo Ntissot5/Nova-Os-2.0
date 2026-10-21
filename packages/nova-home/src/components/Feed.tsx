@@ -1,6 +1,6 @@
 // Le fil en direct : les étapes d'un agent qui apparaissent une à une, en phrases.
 
-import type { Step } from "../../../nova-daemon/src/types";
+import type { Step } from "../../../nova-server/src/core/types";
 import { APP_NAMES } from "../apps";
 
 export function Feed({ steps, working, label }: { steps: Step[]; working: boolean; label: string }) {

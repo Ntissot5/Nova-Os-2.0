@@ -3,7 +3,7 @@
 // En Phase 1, les mêmes agents travaillent sur les vrais connecteurs MCP.
 
 import type { Engine, Scenario } from "./engine.js";
-import type { Task } from "./types.js";
+import type { Task } from "../core/types.js";
 
 const s = (text: string, app?: string, ms = 2200, doc?: string) => ({ text, app, ms, doc });
 
@@ -22,8 +22,20 @@ const SCENARIOS: Record<string, Scenario[]> = {
         s("Je demande un passage aujourd'hui.", "mail", 2400, "Pourriez-vous passer aujourd'hui et nous dire s'il faut faire venir le sanitaire ?\n\nMerci et belle journée,\nLa régie"),
         s("Je prépare aussi une réponse à Mme Rossi pour la rassurer.", "mail", 1800),
       ],
+      prepare: async (call, task) => {
+        const favre = await call("mail_brouillon", { a: ["Jean Favre <j.favre.concierge@example.org>"], sujet: "Fuite d'eau, Rue du Lac 14, 3e étage", texte: task.doc?.body ?? "" });
+        const rossi = await call("mail_brouillon", {
+          a: ["Maria Rossi <maria.rossi@example.org>"],
+          sujet: "Re: Fuite d'eau sous l'évier",
+          texte: "Bonjour Madame Rossi,\n\nMerci de nous avoir prévenus. Le concierge, M. Favre, passe aujourd'hui. Gardez le robinet sous l'évier fermé d'ici là.\n\nMeilleures salutations,\nLa régie",
+        });
+        return [
+          { tool: "mail_envoyer", args: { id: favre.id } },
+          { tool: "mail_envoyer", args: { id: rossi.id } },
+        ];
+      },
       action: {
-        tool: "mail.send",
+        tool: "mail_envoyer",
         summary: "Envoyer 2 messages : à M. Favre (concierge) et à Mme Rossi",
         sensitive: true,
         recipients: 2,
@@ -47,8 +59,12 @@ const SCENARIOS: Record<string, Scenario[]> = {
         s("Je rédige la réponse.", "mail", 2400, "Bonjour Monsieur Keller,\n\nLa place n° 12 au sous-sol est disponible dès maintenant, pour 120 CHF par mois. "),
         s("Je propose la suite.", "mail", 2200, "Si elle vous convient, nous vous enverrons l'avenant à signer.\n\nMeilleures salutations,\nLa régie"),
       ],
+      prepare: async (call, task) => {
+        const d = await call("mail_brouillon", { a: ["Thomas Keller <t.keller@example.org>"], sujet: "Re: Place de parc", texte: task.doc?.body ?? "" });
+        return [{ tool: "mail_envoyer", args: { id: d.id } }];
+      },
       action: {
-        tool: "mail.send",
+        tool: "mail_envoyer",
         summary: "Répondre à M. Keller : place n° 12 disponible",
         sensitive: true,
         recipients: 1,
@@ -64,29 +80,37 @@ const SCENARIOS: Record<string, Scenario[]> = {
   ],
   relances: [
     {
-      title: "Loyers impayés de novembre",
+      title: "Loyers impayés d'octobre",
       docTitle: "Relance — premier rappel",
       steps: [
-        s("J'ouvre les paiements de novembre dans la compta.", "compta", 1500),
-        s("142 loyers attendus, 139 reçus.", "compta"),
-        s("3 locataires ont plus de 10 jours de retard : M. Dupont, Mme Berset, M. Ochsner.", "compta", 2600),
-        s("Je vérifie qu'aucun n'a d'arrangement de paiement en cours.", "fichiers"),
-        s("Aucun arrangement. Je rédige 3 relances, ton cordial.", "mail", 1800, "Bonjour,\n\nSauf erreur de notre part, le loyer de novembre n'est pas encore parvenu sur notre compte. "),
-        s("J'ajoute le montant et l'échéance de chacun.", "mail", 2400, "Nous vous remercions de bien vouloir effectuer le versement d'ici au 5 décembre. "),
+        s("J'ouvre les loyers d'octobre dans la compta.", "compta", 1500),
+        s("8 loyers attendus, 5 payés en entier.", "compta"),
+        s("3 locataires ont plus de 10 jours de retard : M. Dupont, Mme Berset, M. Ochsner (solde de 555 CHF).", "compta", 2600),
+        s("Je vérifie les mails : Mme Berset a demandé un paiement en deux fois le 19 octobre.", "mail", 2400),
+        s("Je ne relance pas Mme Berset : sa demande t'attend dans les mails. Je rédige 2 relances, ton cordial.", "mail", 2200, "Bonjour,\n\nSauf erreur de notre part, le loyer d'octobre n'est pas encore entièrement parvenu sur notre compte. "),
+        s("J'ajoute le montant et l'échéance de chacun.", "mail", 2400, "Nous vous remercions de bien vouloir effectuer le versement d'ici au 31 octobre. "),
         s("Je termine.", "mail", 1800, "Si le paiement a été fait entre-temps, merci de ne pas tenir compte de ce message.\n\nMeilleures salutations,\nLa régie"),
       ],
+      prepare: async (call, task) => {
+        const body = task.doc?.body ?? "";
+        const dupont = await call("mail_brouillon", { a: ["Marc Dupont <marc.dupont@example.org>"], sujet: "Loyer d'octobre : 1’650 CHF", texte: body });
+        const ochsner = await call("mail_brouillon", { a: ["Paul Ochsner <paul.ochsner@example.org>"], sujet: "Loyer d'octobre : solde de 555 CHF", texte: body });
+        return [
+          { tool: "mail_envoyer", args: { id: dupont.id } },
+          { tool: "mail_envoyer", args: { id: ochsner.id } },
+        ];
+      },
       action: {
-        tool: "mail.send",
-        summary: "Envoyer 3 relances de loyer (4’860 CHF au total)",
+        tool: "mail_envoyer",
+        summary: "Envoyer 2 relances de loyer (2’205 CHF au total)",
         sensitive: true,
-        recipients: 3,
         why: {
           rule: "Un loyer en retard de plus de 10 jours reçoit un premier rappel cordial, sauf arrangement en cours.",
           ruleRef: "regles.md#relances",
-          sources: ["Compta : paiements de novembre", "Dossiers locataires : arrangements"],
+          sources: ["Compta : loyers d'octobre", "Mail de Mme Berset du 19 octobre (demande d'arrangement)"],
         },
       },
-      outcome: "3 relances envoyées.",
+      outcome: "2 relances envoyées. La demande de Mme Berset reste à traiter.",
       minutesSaved: 45,
     },
   ],
@@ -111,11 +135,14 @@ const SCENARIOS: Record<string, Scenario[]> = {
         s("Je vérifie le bon de commande : conforme.", "fichiers"),
         s("Je prépare le paiement.", "compta", 2000, "Échéance : 30 jours\nCompte : CH93 0076 2011 6238 5295 7\n"),
       ],
+      prepare: async (call) => {
+        const open = (await call("compta_factures", { statut: "a-payer" })) as { items?: { id: string }[] };
+        return open.items?.some((f) => f.id === "2026-418") ? [{ tool: "compta_payer", args: { facture: "2026-418" } }] : [];
+      },
       action: {
-        tool: "compta.payment",
+        tool: "compta_payer",
         summary: "Payer la facture de Sanitaires Morel SA (1’240.50 CHF)",
         sensitive: true,
-        amountCHF: 1240.5,
         why: {
           rule: "Une facture conforme au bon de commande est préparée pour paiement.",
           ruleRef: "regles.md#factures",

@@ -2,15 +2,21 @@
 // journalise chaque étape et publie l'état à l'interface.
 
 import { EventEmitter } from "node:events";
-import { decide, suggestion } from "./autonomy.js";
-import type { Journal } from "./journal.js";
-import type { Action, AgentState, Approval, Autonomy, CompanyConfig, State, Task } from "./types.js";
+import { decide, suggestion } from "../core/autonomy.js";
+import type { Journal } from "../core/journal.js";
+import type { Action, AgentState, Approval, Autonomy, CompanyConfig, State, Task, ToolCall } from "../core/types.js";
+import type { Bus, Rights } from "./bus.js";
 
 export interface Scenario {
   title: string;
   steps: { text: string; app?: string; ms: number; doc?: string }[];
   docTitle?: string;
   action?: Action;
+  /**
+   * Prépare l'action sur le bus (brouillons, etc.) et renvoie les appels à exécuter si elle part.
+   * Le résumé, le montant et les destinataires viennent alors de l'aperçu des connecteurs.
+   */
+  prepare?: (call: (tool: string, args: Record<string, unknown>) => Promise<Record<string, unknown>>, task: Task) => Promise<ToolCall[]>;
   /** Phrase finale si l'action est exécutée (ou s'il n'y a pas d'action). */
   outcome: string;
   minutesSaved: number;
@@ -27,7 +33,7 @@ export class Engine extends EventEmitter {
   constructor(
     private cfg: CompanyConfig,
     private journal: Journal,
-    private opts: { demo: boolean; speed: number; me: string; now?: () => Date } = { demo: false, speed: 1, me: "" },
+    private opts: { demo: boolean; speed: number; me: string; now?: () => Date; bus?: Bus } = { demo: false, speed: 1, me: "" },
   ) {
     super();
     for (const [id, a] of Object.entries(cfg.agents)) {
@@ -40,12 +46,12 @@ export class Engine extends EventEmitter {
     return this.opts.now ? this.opts.now() : new Date();
   }
 
-  state(): State {
+  state(me = this.opts.me): State {
     const weekAgo = this.now().getTime() - 7 * 24 * 3600 * 1000;
     const week = this.tasks.filter((t) => t.status === "terminee" && Date.parse(t.endedAt ?? t.startedAt) >= weekAgo);
     return {
       company: this.cfg.company,
-      me: this.opts.me,
+      me,
       demo: this.opts.demo,
       now: this.now().toISOString(),
       agents: [...this.agents.values()].map((a) => ({ ...a, suggestion: suggestion(a.autonomy, a.streak) })),
@@ -104,7 +110,7 @@ export class Engine extends EventEmitter {
     const next = () => {
       if (task.status !== "en-cours") return;
       const step = sc.steps[i++];
-      if (!step) return this.finishWork(task, sc);
+      if (!step) return void this.finishWork(task, sc);
       const t = setTimeout(() => {
         if (task.status !== "en-cours") return;
         task.steps.push({ at: this.now().toISOString(), text: step.text, app: step.app });
@@ -120,7 +126,11 @@ export class Engine extends EventEmitter {
     return task;
   }
 
-  private finishWork(task: Task, sc: Scenario) {
+  private rights(agentId: string): Rights {
+    return this.cfg.agents[agentId]?.connectors ?? {};
+  }
+
+  private async finishWork(task: Task, sc: Scenario) {
     this.running.delete(task.id);
     const agent = this.agent(task.agentId);
     agent.appsInUse = [];
@@ -128,11 +138,34 @@ export class Engine extends EventEmitter {
 
     if (!sc.action) return this.complete(task, sc.outcome);
 
-    task.action = sc.action;
+    let action: Action = sc.action;
+    if (sc.prepare && this.opts.bus) {
+      const bus = this.opts.bus;
+      const who = `agent:${task.agentId}`;
+      try {
+        const calls = await sc.prepare((tool, args) => bus.call(who, this.rights(task.agentId), tool, args, sc.title), task);
+        if (calls.length === 0) return this.complete(task, "Rien à faire : déjà traité.");
+        const previews = await Promise.all(calls.map((c) => bus.preview(who, this.rights(task.agentId), c.tool, c.args)));
+        action = {
+          ...sc.action,
+          tool: calls[0]?.tool ?? sc.action.tool,
+          calls,
+          summary: sc.action.summary || previews.map((p) => p.summary).join(" ; "),
+          sensitive: calls.some((c) => bus.info(c.tool).sensitive),
+          amountCHF: previews.reduce((s, p) => s + (p.amountCHF ?? 0), 0) || undefined,
+          recipients: previews.reduce((s, p) => s + (p.recipients ?? 0), 0) || undefined,
+          unknownRecipient: previews.some((p) => p.unknownRecipient),
+        };
+      } catch (e) {
+        return this.fail(task, e);
+      }
+    }
+
+    task.action = action;
     task.outcome = sc.outcome;
-    const d = decide(sc.action, agent.autonomy, this.cfg.limits);
+    const d = decide(action, agent.autonomy, this.cfg.limits);
     task.decision = d;
-    this.journal.write({ qui: `agent:${task.agentId}`, quoi: sc.action.tool, pourquoi: sc.action.why.rule, decision: d, tache: task.id });
+    this.journal.write({ qui: `agent:${task.agentId}`, quoi: action.tool, pourquoi: action.why.rule, decision: d, tache: task.id });
     if (d.kind === "validation") task.status = "en-attente";
     else if (d.kind === "differe") {
       task.status = "differe";
@@ -142,7 +175,17 @@ export class Engine extends EventEmitter {
     this.changed();
   }
 
-  private complete(task: Task, outcome: string) {
+  /** L'action part : ses appels sont exécutés sur le bus, la décision d'autonomie ayant été prise. */
+  private async complete(task: Task, outcome: string) {
+    const calls = task.action?.calls ?? [];
+    if (calls.length && this.opts.bus) {
+      task.status = "en-cours"; // pendant l'exécution : ni annulable, ni validable une seconde fois
+      try {
+        for (const c of calls) await this.opts.bus.call(`agent:${task.agentId}`, this.rights(task.agentId), c.tool, c.args, task.action!.why.rule, true);
+      } catch (e) {
+        return this.fail(task, e);
+      }
+    }
     task.status = "terminee";
     task.outcome = outcome;
     task.endedAt = this.now().toISOString();
@@ -151,10 +194,19 @@ export class Engine extends EventEmitter {
     this.changed();
   }
 
+  private fail(task: Task, e: unknown) {
+    task.status = "echec";
+    task.outcome = `Échec : ${e instanceof Error ? e.message : String(e)}`;
+    task.endedAt = this.now().toISOString();
+    this.journal.write({ qui: `agent:${task.agentId}`, quoi: "tache.echec", resultat: task.outcome, tache: task.id });
+    this.recount();
+    this.changed();
+  }
+
   private flushDeferred() {
     const now = this.now().getTime();
     for (const t of this.tasks) {
-      if (t.status === "differe" && t.executeAt && Date.parse(t.executeAt) <= now) this.complete(t, t.outcome ?? "Fait");
+      if (t.status === "differe" && t.executeAt && Date.parse(t.executeAt) <= now) void this.complete(t, t.outcome ?? "Fait");
     }
   }
 
@@ -163,7 +215,7 @@ export class Engine extends EventEmitter {
     if (t.status !== "en-attente") throw new Conflict("Cette action n'attend plus de validation.");
     this.agent(t.agentId).streak++;
     this.journal.write({ qui: who, quoi: "validation", resultat: "validee", tache: t.id });
-    this.complete(t, t.outcome ?? "Fait");
+    void this.complete(t, t.outcome ?? "Fait");
   }
 
   refuse(taskId: string, who: string) {

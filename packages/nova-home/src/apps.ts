@@ -5,4 +5,5 @@ export const APP_NAMES: Record<string, string> = {
   compta: "Compta",
   navigateur: "Navigateur",
   bureautique: "Bureautique",
+  telephone: "Téléphone",
 };

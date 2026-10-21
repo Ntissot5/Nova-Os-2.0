@@ -20,9 +20,16 @@ export interface AgentConfig {
   connectors: Record<string, string[]>;
 }
 
-/** Une action qu'un agent veut faire sur le monde, via un connecteur. */
+/** Un appel d'outil sur le bus MCP. */
+export interface ToolCall {
+  tool: string; // ex. "mail_envoyer"
+  args: Record<string, unknown>;
+}
+
+/** Une action qu'un agent veut faire sur le monde, via un ou plusieurs appels d'outils. */
 export interface Action {
-  tool: string; // ex. "mail.send", "compta.payment", "fichiers.delete"
+  tool: string; // outil principal, ex. "mail_envoyer", "compta_payer"
+  calls?: ToolCall[]; // appels réellement exécutés quand l'action part
   summary: string; // phrase humaine : « Envoyer 3 relances de loyer »
   sensitive: boolean; // envoi, paiement, suppression
   amountCHF?: number;
@@ -53,7 +60,7 @@ export interface Doc {
   body: string;
 }
 
-export type TaskStatus = "en-cours" | "en-attente" | "differe" | "terminee" | "annulee" | "refusee" | "arretee";
+export type TaskStatus = "en-cours" | "en-attente" | "differe" | "terminee" | "annulee" | "refusee" | "arretee" | "echec";
 
 export interface Task {
   id: string;
@@ -97,4 +104,13 @@ export interface State {
   approvals: Approval[];
   tasks: Task[]; // récentes, plus récentes d'abord
   gains: { minutesThisWeek: number; tasksThisWeek: number };
+}
+
+/** Une question en langage naturel posée depuis la barre du haut ou Nova Home. */
+export interface AskEvent {
+  type: "etape" | "reponse" | "erreur";
+  text: string;
+  app?: string; // source consultée pendant l'étape
+  sources?: string[];
+  ms?: number;
 }

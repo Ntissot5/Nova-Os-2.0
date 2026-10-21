@@ -4,7 +4,7 @@
 //   npm run test:ui     (après npm run build ; nécessite Nix pour générer company.json)
 
 import { spawn, execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import assert from "node:assert/strict";
@@ -18,19 +18,17 @@ execFileSync("node", ["design/build.mjs", "theme", JSON.parse(readFileSync(compa
 
 const port = "7799";
 const base = `http://127.0.0.1:${port}`;
-const daemon = spawn("node", ["packages/nova-daemon/dist/server.js"], {
+cpSync(join(root, "companies/demo/data"), join(dir, "data"), { recursive: true });
+const { ANTHROPIC_API_KEY: _k, ANTHROPIC_AUTH_TOKEN: _t, ...env } = process.env; // le test ne parle jamais au vrai modèle
+const gateway = spawn("node", ["packages/nova-server/dist/gateway/main.js"], {
   cwd: root,
   stdio: "inherit",
-  env: {
-    ...process.env,
-    NOVA_COMPANY: company,
-    NOVA_THEME_CSS: join(dir, "theme.css"),
-    NOVA_HOME_DIR: "packages/nova-home/dist",
-    NOVA_DATA: join(dir, "data"),
-    NOVA_DEMO: "1",
-    NOVA_DEMO_SPEED: "4",
-    NOVA_PORT: port,
-  },
+  env: { ...env, NOVA_COMPANY: company, NOVA_DATA: join(dir, "data"), NOVA_DEMO: "1", NOVA_DEMO_SPEED: "4", NOVA_GATEWAY_PORT: "7798" },
+});
+const daemon = spawn("node", ["packages/nova-server/dist/daemon/main.js"], {
+  cwd: root,
+  stdio: "inherit",
+  env: { ...env, NOVA_GATEWAY: "http://127.0.0.1:7798", NOVA_PERSON: "noa", NOVA_THEME_CSS: join(dir, "theme.css"), NOVA_HOME_DIR: "packages/nova-home/dist", NOVA_PORT: port },
 });
 
 const state = async () => (await fetch(`${base}/api/state`)).json();
@@ -57,10 +55,10 @@ const check = async (name, fn) => {
 };
 
 try {
-  await until("daemon prêt", async () => (await fetch(`${base}/api/state`).catch(() => null))?.ok);
+  await until("gardien et daemon prêts", async () => (await fetch(`${base}/api/state`).catch(() => null))?.ok);
 
   for (const dark of [false, true])
-    for (const hash of ["#/", "#/agents/locataires", "#/agents/relances", "#/design"])
+    for (const hash of ["#/", "#/agents/locataires", "#/agents/relances", "#/demander", "#/design"])
       await check(`accessibilité ${hash} (${dark ? "sombre" : "clair"})`, async () => {
         const page = await browser.newPage({ colorScheme: dark ? "dark" : "light" });
         await page.goto(`${base}/${hash}`);
@@ -103,6 +101,25 @@ try {
     assert.match(files, /"quoi":"autonomie"/);
   });
 
+  await check("« / » ouvre Demander ; sans clé d'API, une phrase claire", async () => {
+    await page.goto(`${base}/#/`);
+    await page.keyboard.press("/");
+    await page.waitForSelector("#question");
+    await page.fill("#question", "Qui est en retard ?");
+    await page.keyboard.press("Enter");
+    await page.getByText("il manque la clé d'API").waitFor();
+  });
+
+  await check("une action validée passe vraiment par le connecteur (paiement ordonné)", async () => {
+    const ordered = () => readFileSync(join(dir, "data/compta/ordres.csv"), "utf8").includes("2026-418");
+    const pending = async () => (await state()).tasks.find((t) => t.agentId === "compta" && t.status === "en-attente" && t.action?.tool === "compta_payer");
+    // La facture a peut-être déjà été validée par le test du clic : sinon, on attend qu'elle se présente.
+    await until("facture payée ou en attente", async () => existsSync(join(dir, "data/compta/ordres.csv")) || (await pending()), 60000);
+    const t = await pending();
+    if (t) assert.equal((await fetch(`${base}/api/approvals/${t.id}/valider`, { method: "POST", headers: { "x-nova": "1" } })).status, 200);
+    await until("ordre écrit", async () => existsSync(join(dir, "data/compta/ordres.csv")) && ordered());
+  });
+
   await check("un site extérieur ne peut pas piloter le daemon", async () => {
     const r = await fetch(`${base}/api/agents/compta/pause`, { method: "POST" });
     assert.equal(r.status, 403);
@@ -110,6 +127,7 @@ try {
 } finally {
   await browser.close();
   daemon.kill();
+  gateway.kill();
 }
 
 if (failures) {

@@ -9,7 +9,8 @@ export function decide(action: Action, autonomy: Autonomy, limits: CompanyConfig
   if (!action.sensitive) return { kind: "immediat" };
 
   // Garde-fou permanent : au-dessus du plafond, un paiement est toujours validé par un humain.
-  if (action.tool === "compta.payment" && (action.amountCHF ?? 0) > limits.paymentApprovalAboveCHF) {
+  // Le montant vient de l'aperçu du connecteur ; on ne se fie pas au nom de l'outil.
+  if ((action.amountCHF ?? 0) > limits.paymentApprovalAboveCHF) {
     return { kind: "validation", reason: `Paiement au-dessus de ${chf(limits.paymentApprovalAboveCHF)}` };
   }
 

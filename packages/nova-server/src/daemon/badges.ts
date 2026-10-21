@@ -2,7 +2,7 @@
 // Utilise l'API standard « LauncherEntry » comprise par Dash to Dock. Sans session graphique, ne fait rien.
 
 import { execFile } from "node:child_process";
-import type { State } from "./types.js";
+import type { State } from "../core/types.js";
 
 const last = new Map<string, string>();
 let available = Boolean(process.env.DBUS_SESSION_BUS_ADDRESS);

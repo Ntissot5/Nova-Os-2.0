@@ -1,0 +1,30 @@
+{
+  "name": "nova-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "nova-daemon": "dist/daemon/main.js",
+    "nova-gateway": "dist/gateway/main.js"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "typecheck": "tsc -p . --noEmit",
+    "test": "tsc -p . && node --test \"dist/**/*.test.js\""
+  },
+  "devDependencies": {
+    "@types/mailparser": "^3.9.0",
+    "@types/node": "^22.10.0",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "ical.js": "^2.2.1",
+    "imapflow": "^2.5.9",
+    "mailparser": "^3.10.0",
+    "nodemailer": "^10.1.7",
+    "tsdav": "^2.5.0",
+    "zod": "^4.6.7"
+  }
+}

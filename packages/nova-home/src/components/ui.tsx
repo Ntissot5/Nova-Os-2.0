@@ -2,7 +2,7 @@
 // en composant ceux-ci.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { AgentState, Autonomy, Task, Why } from "../../../nova-daemon/src/types";
+import type { AgentState, Autonomy, Task, Why } from "../../../nova-server/src/core/types";
 import { act } from "../api";
 import { countdown } from "../format";
 
