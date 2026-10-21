@@ -117,6 +117,7 @@ export function Entreprise({ state, now }: { state: State; now: Date }) {
                 <span className="caption actions">
                   <a href="#/couts">Coûts</a>
                   <a href="#/flotte">Flotte</a>
+                  <a href="#/connecteurs">Connecteurs</a>
                 </span>
               )
             }

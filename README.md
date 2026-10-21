@@ -13,9 +13,13 @@ Une entreprise = un fichier `company.nix` + un dossier `data/`. Zéro lock-in.
 ## Les 4 couches
 
 1. **Base** : NixOS immuable et déclaratif, disque chiffré, mises à jour atomiques.
-2. **Bus d'API** : un serveur MCP par source (mail, calendrier, fichiers, compta, téléphonie…). *Phase 1.*
+2. **Bus d'API** : un serveur MCP par source (mail, calendrier, fichiers, compta, téléphonie…), et l'écran **Connecteurs** pour brancher n'importe quel autre service qui expose un serveur MCP.
 3. **Agents** : Claude, encadrés par des règles d'autonomie appliquées hors de l'agent.
 4. **Nova Desktop** : le bureau GNOME habillé par Nova (dock de la boîte, barre du haut, verre) et Nova Home (espace Entreprise, pages d'agents).
+
+| Connecteurs : tous les services de la boîte au même endroit | Brancher un service |
+|---|---|
+| ![Connecteurs](docs/captures/connecteurs.png) | ![Brancher un service](docs/captures/connecteurs-ajouter.png) |
 
 ## Démarrer
 
@@ -46,7 +50,7 @@ flake.nix                    Point d'entrée : machines, paquets, image d'instal
 companies/demo/              Une entreprise : company.nix + data/ (formats ouverts)
 modules/                     Modules NixOS nova.* : base, disque, hub (gardien, flotte, sauvegarde), poste (bureau)
 packages/nova-server/        nova-gateway (Hub), nova-daemon (poste), connecteurs MCP, commande nova
-packages/nova-home/          Interface : espace Entreprise, agents, Demander, coûts, flotte
+packages/nova-home/          Interface : espace Entreprise, agents, Demander, connecteurs, coûts, flotte
 packages/nova-shell/         Extension GNOME : la barre du haut Nova
 packages/installer.nix       Image d'installation automatique
 verticals/gerance/skills/    Le métier des agents de gérance, en Markdown
@@ -68,4 +72,4 @@ scripts/                     dev, bench-question, rapport-pilote
 
 ## Statut
 
-MVP construit, phases 0 à 3 (voir `ROADMAP.md`) : bureau Nova, bus MCP à 5 connecteurs (testés contre de vrais serveurs), agents Claude visibles avec autonomie choisie, questions en langage naturel, export et import sans perte, flotte du Hub. Restent à faire : brancher une clé d'API Anthropic, installer le pilote et mesurer, et gérer des postes distants (Q-3).
+MVP construit, phases 0 à 3 (voir `ROADMAP.md`) : bureau Nova, bus MCP à 5 connecteurs (testés contre de vrais serveurs), agents Claude visibles avec autonomie choisie, questions en langage naturel, export et import sans perte, flotte du Hub, connecteurs ajoutés depuis l'interface (tout service MCP). Restent à faire : brancher une clé d'API Anthropic, installer le pilote et mesurer, et gérer des postes distants (Q-3).

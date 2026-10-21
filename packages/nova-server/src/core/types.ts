@@ -36,6 +36,7 @@ export interface Action {
   amountCHF?: number;
   recipients?: number;
   unknownRecipient?: boolean;
+  toujoursValider?: string; // connecteur ajouté dont les actions sont toujours validées par un humain
   why: Why;
 }
 

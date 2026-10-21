@@ -8,7 +8,11 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import assert from "node:assert/strict";
+import { createServer } from "node:http";
 import { chromium } from "playwright";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { z } from "zod";
 
 const root = new URL("..", import.meta.url).pathname;
 const dir = mkdtempSync(join(tmpdir(), "nova-ui-"));
@@ -30,6 +34,18 @@ const daemon = spawn("node", ["packages/nova-server/dist/daemon/main.js"], {
   stdio: "inherit",
   env: { ...env, NOVA_GATEWAY: "http://127.0.0.1:7798", NOVA_PERSON: "noa", NOVA_THEME_CSS: join(dir, "theme.css"), NOVA_HOME_DIR: "packages/nova-home/dist", NOVA_PORT: port },
 });
+
+// Un service tiers quelconque, exposé en MCP : ce que le dirigeant branche depuis l'écran Connecteurs.
+const crm = createServer(async (req, res) => {
+  if (req.headers.authorization !== "Bearer jeton-crm") return void res.writeHead(401).end();
+  const s = new McpServer({ name: "crm", version: "1.0.0" });
+  s.registerTool("chercher_client", { description: "Cherche un client", inputSchema: { nom: z.string() }, annotations: { readOnlyHint: true } }, async ({ nom }) => ({ content: [{ type: "text", text: nom }] }));
+  s.registerTool("creer_client", { description: "Crée un client", inputSchema: { nom: z.string() } }, async ({ nom }) => ({ content: [{ type: "text", text: nom }] }));
+  const t = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
+  res.on("close", () => void t.close());
+  await s.connect(t);
+  await t.handleRequest(req, res);
+}).listen(7797, "127.0.0.1");
 
 const state = async () => (await fetch(`${base}/api/state`)).json();
 const until = async (what, fn, ms = 30000) => {
@@ -58,7 +74,7 @@ try {
   await until("gardien et daemon prêts", async () => (await fetch(`${base}/api/state`).catch(() => null))?.ok);
 
   for (const dark of [false, true])
-    for (const hash of ["#/", "#/agents/locataires", "#/agents/relances", "#/demander", "#/design"])
+    for (const hash of ["#/", "#/agents/locataires", "#/agents/relances", "#/demander", "#/design", "#/connecteurs"])
       await check(`accessibilité ${hash} (${dark ? "sombre" : "clair"})`, async () => {
         const page = await browser.newPage({ colorScheme: dark ? "dark" : "light" });
         await page.goto(`${base}/${hash}`);
@@ -120,6 +136,29 @@ try {
     await until("ordre écrit", async () => existsSync(join(dir, "data/compta/ordres.csv")) && ordered());
   });
 
+  await check("brancher un service MCP depuis l'écran Connecteurs", async () => {
+    const p = await browser.newPage();
+    await p.goto(`${base}/#/connecteurs`);
+    await p.getByRole("button", { name: /Autre service/ }).click();
+    const d = p.getByRole("dialog");
+    await d.getByLabel("Nom").fill("CRM");
+    await d.getByLabel("Adresse du serveur MCP").fill("http://127.0.0.1:7797/mcp");
+    await d.getByLabel(/Jeton/).fill("mauvais");
+    await d.getByRole("checkbox", { name: "Locataires" }).check();
+    await d.getByRole("button", { name: "Brancher" }).click();
+    await d.getByText("vérifie le jeton").waitFor();
+    await d.getByLabel(/Jeton/).fill("jeton-crm");
+    await d.getByRole("button", { name: "Brancher" }).click();
+    await p.getByText(/2 outils · lecture seule · Locataires/).waitFor();
+    await p.addScriptTag({ content: axe });
+    const r = await p.evaluate(() => axe.run(document, { runOnly: ["wcag2a", "wcag2aa", "wcag21aa"] }));
+    assert.deepEqual(r.violations.map((v) => v.id), []);
+    const tools = await (await fetch(`${base}/api/tools`)).json();
+    assert.ok(tools.some((t) => t.name === "crm__chercher_client"));
+    assert.ok(!readFileSync(join(dir, "data/connecteurs/ajoutes.json"), "utf8").includes("jeton-crm"));
+    await p.close();
+  });
+
   await check("un site extérieur ne peut pas piloter le daemon", async () => {
     const r = await fetch(`${base}/api/agents/compta/pause`, { method: "POST" });
     assert.equal(r.status, 403);
@@ -128,6 +167,7 @@ try {
   await browser.close();
   daemon.kill();
   gateway.kill();
+  crm.close();
 }
 
 if (failures) {

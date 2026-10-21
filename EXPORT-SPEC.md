@@ -56,6 +56,7 @@ Uniquement des formats ouverts, chacun lisible avec un outil courant.
 | `journal/` | Chaque action d'humain ou d'agent | JSON Lines, un fichier par mois (`AAAA-MM.jsonl`) ; champs : `ts`, `qui`, `quoi`, `pourquoi`, `resultat`, et selon l'action `decision`, `tokens`, `coutUSD`, `modele`, `ms`, `tache` |
 | `agents/` | État des déclencheurs (mails déjà traités, dernière tournée) | JSON |
 | `mesures/` | Relevés hebdomadaires des heures | CSV `semaine;heures;saisiPar;date` |
+| `connecteurs/` | Services branchés depuis l'écran Connecteurs (sans leurs jetons) | JSON `ajoutes.json` : `id`, `nom`, `url`, `agents`, `acces`, `toujoursValider`, `ajouteLe`, `ajoutePar` |
 | `secrets/` | Mots de passe et clés des services | YAML chiffré par [sops](https://github.com/getsops/sops) avec [age](https://age-encryption.org) |
 | `.corbeille/` | Fichiers supprimés (30 jours) | Fichiers tels quels, rangés par date |
 
@@ -65,6 +66,7 @@ Uniquement des formats ouverts, chacun lisible avec un outil courant.
 
 - **La clé `age` de l'entreprise** : sans elle, `data/secrets/` reste illisible. Elle se garde à part (papier, coffre, clé USB). Une archive volée ne livre donc aucun mot de passe.
 - **Les clés de secours des disques** : elles sont propres à chaque machine, pas à l'entreprise.
+- **Les jetons des connecteurs ajoutés** depuis l'écran Connecteurs : ils vivent dans `/var/lib/nova/secrets/` sur le Hub. La liste des connecteurs, elle, voyage (`data/connecteurs/ajoutes.json` : nom, adresse, agents, réglages). Après un import, chaque connecteur ajouté s'affiche « ne répond pas » jusqu'à ce que le dirigeant redonne son jeton dans *Régler*.
 
 ## 5. Vérifier et réimporter
 

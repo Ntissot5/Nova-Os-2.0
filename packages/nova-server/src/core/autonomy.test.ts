@@ -58,3 +58,9 @@ test("montants au format suisse", () => {
   assert.equal(chf(1240.5), "1’240.50 CHF");
   assert.equal(chf(500), "500 CHF");
 });
+
+test("connecteur ajouté : ses actions attendent un humain, même en autonome", () => {
+  const ext: Action = { tool: "crm__creer", summary: "Créer", sensitive: true, toujoursValider: "CRM", why };
+  assert.deepEqual(decide(ext, "autonome", limits), { kind: "validation", reason: "Action de CRM, connecteur ajouté" });
+  assert.equal(decide({ ...ext, toujoursValider: undefined }, "autonome", limits).kind, "differe");
+});

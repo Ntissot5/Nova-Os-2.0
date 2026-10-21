@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export type Route = { name: "entreprise" } | { name: "agent"; id: string } | { name: "design" } | { name: "demander"; q?: string } | { name: "couts" } | { name: "flotte" };
+export type Route = { name: "entreprise" } | { name: "agent"; id: string } | { name: "design" } | { name: "demander"; q?: string } | { name: "couts" } | { name: "flotte" } | { name: "connecteurs" };
 
 function parse(hash: string): Route {
   const m = hash.match(/^#\/agents\/([\w-]+)/);
@@ -8,6 +8,7 @@ function parse(hash: string): Route {
   if (hash.startsWith("#/design")) return { name: "design" };
   if (hash.startsWith("#/couts")) return { name: "couts" };
   if (hash.startsWith("#/flotte")) return { name: "flotte" };
+  if (hash.startsWith("#/connecteurs")) return { name: "connecteurs" };
   if (hash.startsWith("#/demander")) return { name: "demander", q: new URLSearchParams(hash.split("?")[1] ?? "").get("q") ?? undefined };
   return { name: "entreprise" };
 }

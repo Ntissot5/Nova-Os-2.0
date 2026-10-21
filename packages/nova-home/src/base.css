@@ -825,3 +825,64 @@ details.task[open] > summary {
   height: 56px;
   box-shadow: inset 0 0 0 1px var(--glass-edge);
 }
+
+/* ---------- Connecteurs ---------- */
+
+.catalogue {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.fiche {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  text-align: left;
+  font: var(--text-body);
+  color: var(--text);
+  border: 0;
+  cursor: pointer;
+  transition: transform var(--motion-base) var(--ease);
+}
+.fiche:hover {
+  transform: translateY(-2px);
+}
+.fiche:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.fiche-autre {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.champ {
+  display: grid;
+  gap: 6px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.champ > span:first-child,
+.champ > legend {
+  font-weight: 600;
+  padding: 0;
+  margin-bottom: 6px;
+}
+.field-large {
+  width: 100%;
+}
+.choix {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 32px;
+}
+.choix input {
+  accent-color: var(--accent);
+  width: 18px;
+  height: 18px;
+}
