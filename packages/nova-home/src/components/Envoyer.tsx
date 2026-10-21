@@ -1,6 +1,6 @@
 // « Envoyer à… » : un dossier passe d'un département à un autre, avec la tâche dont il vient.
 
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { State } from "../../../nova-server/src/core/types";
 import { act } from "../api";
 import { Button, useDialogue } from "./ui";
@@ -86,8 +86,7 @@ export function Envoyer({
   );
 }
 
-/** Les couleurs d'un département : son accent, et du texte blanc dessus (contraste AA vérifié au build). */
-export const couleurs = (couleur: string) => ({ "--accent": couleur, "--on-accent": "#fff" }) as CSSProperties;
+export { couleurs } from "./Icones";
 
 /** La pastille de couleur d'un département. */
 export function Pastille({ d, size = 12 }: { d: { couleur: string }; size?: number }) {

@@ -2,12 +2,11 @@
 
 import type { AgentState, State, Task } from "../../../nova-server/src/core/types";
 import { act } from "../api";
-import { ouvrirPalette } from "../components/Palette";
 import { Recu } from "./Departement";
-import { couleurs } from "../components/Envoyer";
+import { couleurs, iconePour, Symbole } from "../components/Icones";
 import { Feed } from "../components/Feed";
 import { Page } from "../components/Shell";
-import { AUTONOMY_LABEL, Bloc, Button, Doc, Monogram, Phrase, Undo, WhyButton } from "../components/ui";
+import { AUTONOMY_LABEL, Bloc, Button, couleurAgent, Doc, Monogram, Phrase, Undo, WhyButton } from "../components/ui";
 import { duration, greeting, plural, relative } from "../format";
 
 export function Entreprise({ state, now }: { state: State; now: Date }) {
@@ -35,17 +34,6 @@ export function Entreprise({ state, now }: { state: State; now: Date }) {
           </h1>
           <p className="muted">{summary(working.length, aFaire)}</p>
         </div>
-        <div className="actions">
-          {state.demo && <span className="pill">Démonstration : données fictives</span>}
-          {aFaire > 0 && (
-            <a className="pill pill-accent" href="#afaire-titre">
-              {aFaire} à faire
-            </a>
-          )}
-          <button type="button" className="pill pill-bouton" onClick={ouvrirPalette} aria-keyshortcuts="Meta+K Control+K">
-            Aller à… <kbd>⌘K</kbd>
-          </button>
-        </div>
       </header>
 
       <div className="grid">
@@ -63,7 +51,7 @@ export function Entreprise({ state, now }: { state: State; now: Date }) {
             }
           >
             {featured ? (
-              <Live task={featured} agent={agents.get(featured.agentId)!} others={working.slice(1)} name={name} />
+              <Live task={featured} agent={agents.get(featured.agentId)!} couleur={couleurAgent(state, featured.agentId)} others={working.slice(1)} name={name} />
             ) : (
               <p className="muted">Tout est calme. Les agents reprennent dès qu'une demande arrive.</p>
             )}
@@ -86,7 +74,7 @@ export function Entreprise({ state, now }: { state: State; now: Date }) {
           )}
 
           <Bloc title="Ce qui s'est passé" id="passe">
-            <ul className="list" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "var(--space-3)" }}>
+            <ul className="list">
               {done.map((t) => (
                 <li key={t.id}>
                   <Phrase
@@ -104,7 +92,7 @@ export function Entreprise({ state, now }: { state: State; now: Date }) {
           </Bloc>
         </div>
 
-        <div className="span-4 stack">
+        <div className="span-4 stack priorite">
           <Bloc title="À faire" id="afaire" className="glass-strong" aside={aFaire > 0 && <span className="pill pill-accent">{aFaire}</span>}>
             {aFaire ? (
               <ul className="list">
@@ -142,12 +130,12 @@ export function Entreprise({ state, now }: { state: State; now: Date }) {
   );
 }
 
-function Live({ task, agent, others, name }: { task: Task; agent: AgentState; others: Task[]; name: (t: Task) => string }) {
+function Live({ task, agent, couleur, others, name }: { task: Task; agent: AgentState; couleur?: string; others: Task[]; name: (t: Task) => string }) {
   return (
     <>
       <div className="actions" style={{ justifyContent: "space-between", gap: "var(--space-2)" }}>
-        <div className="actions" style={{ gap: "var(--space-2)", flexWrap: "nowrap", minWidth: 0 }}>
-          <Monogram agent={agent} />
+        <div className="actions" style={{ gap: "12px", flexWrap: "nowrap", minWidth: 0 }}>
+          <Monogram agent={agent} couleur={couleur} />
           <Phrase meta={agent.name}>
             <span className="strong">{task.title}</span>
           </Phrase>
@@ -175,7 +163,7 @@ export function AgentTile({ agent, state, now }: { agent: AgentState; state: Sta
   return (
     <a className="tile tile-link agent-tile" href={`#/agents/${agent.id}`}>
       <div className="tile-head">
-        <Monogram agent={agent} />
+        <Monogram agent={agent} couleur={couleurAgent(state, agent.id)} />
         <span className="pill">{AUTONOMY_LABEL[agent.autonomy]}</span>
       </div>
       <div className="phrase">
@@ -197,9 +185,9 @@ function DepTile({ d, state }: { d: NonNullable<State["departements"]>[number]; 
   const travaille = agents.filter((a) => a.status === "travaille").length;
   return (
     <a className="tile tile-link dep-tile" href={`#/departements/${d.id}`} style={couleurs(d.couleur)}>
-      <span className="mono" aria-hidden="true">
-        {d.name.slice(0, 1)}
-      </span>
+      <Symbole nom={iconePour(d.name)} taille="l" actif={travaille > 0}>
+        {attente + recus > 0 && <span className="pastille">{attente + recus}</span>}
+      </Symbole>
       <h2 className="title">{d.name}</h2>
       <p className="caption">
         {[
@@ -276,13 +264,15 @@ export function Approval({ task, agentName }: { task: Task; agentName: string })
         <Button variant="principal" onClick={() => act(`approvals/${task.id}/valider`)}>
           Valider
         </Button>
-        <Button variant="secondaire" href={`#/agents/${task.agentId}`}>
-          Voir
-        </Button>
-        <Button variant="discret" onClick={() => act(`approvals/${task.id}/refuser`)}>
+        <Button variant="secondaire" onClick={() => act(`approvals/${task.id}/refuser`)}>
           Refuser
         </Button>
-        {task.action && <WhyButton why={task.action.why} reason={task.decision?.kind === "validation" ? task.decision.reason : undefined} />}
+        <span className="actions-fin">
+          {task.action && <WhyButton why={task.action.why} reason={task.decision?.kind === "validation" ? task.decision.reason : undefined} />}
+          <Button variant="discret" href={`#/agents/${task.agentId}`} label={`Voir ${agentName}`}>
+            Voir
+          </Button>
+        </span>
       </div>
     </div>
   );

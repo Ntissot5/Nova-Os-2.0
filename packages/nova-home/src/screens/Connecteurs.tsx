@@ -88,7 +88,6 @@ export function ConnecteursScreen({ now }: { now: Date }) {
                 <li key={c.id}>
                   <Phrase
                     meta={`${outlook && (c.id === "mail" || c.id === "agenda") ? `Outlook · ${outlook.compte}` : "Intégré à Nova"} · ${plural(c.outils, "outil", "outils")}`}
-                    state="positive"
                   >
                     {INTEGRES[c.id] ?? c.id}
                   </Phrase>
@@ -97,7 +96,7 @@ export function ConnecteursScreen({ now }: { now: Date }) {
               {l.ajoutes.map((c) => (
                 <li key={c.id} className="actions" style={{ justifyContent: "space-between" }}>
                   <Phrase
-                    state={c.etat === "branche" ? "positive" : "attention"}
+                    state={c.etat === "branche" ? undefined : "attention"}
                     meta={
                       c.etat === "branche"
                         ? `${plural(c.outils.length, "outil", "outils")} · ${c.acces === "actions" ? "lecture et actions" : "lecture seule"} · ${c.agents.length ? c.agents.map(nomAgent).join(", ") : "aucun agent"}${c.acces === "actions" ? (c.toujoursValider ? " · chaque action validée" : " · selon l'autonomie") : ""} · ajouté ${relative(c.ajouteLe, now)}`

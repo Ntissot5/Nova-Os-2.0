@@ -5,7 +5,7 @@ import { act, useMoi } from "../api";
 import { APP_NAMES } from "../apps";
 import { Feed } from "../components/Feed";
 import { Page } from "../components/Shell";
-import { AutonomyPicker, Bloc, Button, Doc, Monogram, Phrase, Undo, WhyButton, useReplay } from "../components/ui";
+import { AutonomyPicker, Bloc, Button, couleurAgent, Doc, Monogram, Phrase, Undo, WhyButton, useReplay } from "../components/ui";
 import { duration, relative } from "../format";
 import { Approval } from "./Entreprise";
 
@@ -29,8 +29,8 @@ export function Agent({ state, id, now }: { state: State; id: string; now: Date 
   return (
     <Page>
       <header className="topline">
-        <div className="actions" style={{ gap: "var(--space-3)", flexWrap: "nowrap" }}>
-          <Monogram agent={agent} large />
+        <div className="actions" style={{ gap: "16px", flexWrap: "nowrap", minWidth: 0 }}>
+          <Monogram agent={agent} couleur={couleurAgent(state, agent.id)} large />
           <div className="hero-text">
             <h1 className="display">{agent.name}</h1>
             <p className="muted">{agent.description}</p>
@@ -91,7 +91,7 @@ export function Agent({ state, id, now }: { state: State; id: string; now: Date 
           </Bloc>
 
           <Bloc title="Ce qu'il a fait" id="historique">
-            <ul className="list" style={{ gap: "var(--space-3)" }}>
+            <ul className="list">
               {history.map((t) => (
                 <li key={t.id}>
                   <Past task={t} now={now} />
