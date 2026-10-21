@@ -6,13 +6,27 @@ import type { AgentState, Autonomy, Task, Why } from "../../../nova-daemon/src/t
 import { act } from "../api";
 import { countdown } from "../format";
 
-export function Bloc({ title, children, id }: { title: string; children: ReactNode; id?: string }) {
+/** Une tuile de verre avec son titre. */
+export function Bloc({
+  title,
+  children,
+  id,
+  className = "",
+  aside,
+}: {
+  title: string;
+  children: ReactNode;
+  id?: string;
+  className?: string;
+  aside?: ReactNode;
+}) {
   const hid = id ? `${id}-titre` : undefined;
   return (
-    <section className="bloc" aria-labelledby={hid}>
-      <h2 className="title" id={hid}>
-        {title}
-      </h2>
+    <section className={`tile ${className}`} aria-labelledby={hid}>
+      <div className="tile-head">
+        <h2 id={hid}>{title}</h2>
+        {aside}
+      </div>
       {children}
     </section>
   );
@@ -114,7 +128,7 @@ export function AutonomyPicker({ agent, onChange }: { agent: AgentState; onChang
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const set = (l: Autonomy) => (onChange ? onChange(l) : act(`agents/${agent.id}/autonomie`, { level: l }));
   return (
-    <div className="bloc">
+    <div className="stack autonomy" style={{ gap: "var(--space-2)" }}>
       <div className="segmented" role="radiogroup" aria-label={`Autonomie de ${agent.name}`}>
         {levels.map((l, i) => {
           const on = agent.autonomy === l;
@@ -155,7 +169,7 @@ export function Undo({ task, now, agentName }: { task: Task; now: Date; agentNam
   const left = Math.max(0, (new Date(task.executeAt).getTime() - now.getTime()) / 1000);
   const pct = total > 0 ? Math.min(100, (100 * (total - left)) / total) : 100;
   return (
-    <div className="card">
+    <div className="inset">
       <Phrase meta={agentName}>{task.action?.summary}</Phrase>
       <div className="progress" aria-hidden="true">
         <div style={{ width: `${pct}%` }} />

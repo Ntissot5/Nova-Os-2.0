@@ -4,6 +4,7 @@ import type { AgentState, State, Task } from "../../../nova-daemon/src/types";
 import { act } from "../api";
 import { APP_NAMES } from "../apps";
 import { Feed } from "../components/Feed";
+import { Page } from "../components/Shell";
 import { AutonomyPicker, Bloc, Button, Doc, Monogram, Phrase, Undo, WhyButton, useReplay } from "../components/ui";
 import { duration, relative } from "../format";
 import { Approval } from "./Entreprise";
@@ -12,10 +13,10 @@ export function Agent({ state, id, now }: { state: State; id: string; now: Date 
   const agent = state.agents.find((a) => a.id === id);
   if (!agent)
     return (
-      <main className="page">
+      <Page>
         <p>Cet agent n'existe pas.</p>
         <Button href="#/">Retour à l'entreprise</Button>
-      </main>
+      </Page>
     );
 
   const tasks = state.tasks.filter((t) => t.agentId === id);
@@ -25,26 +26,19 @@ export function Agent({ state, id, now }: { state: State; id: string; now: Date 
   const history = tasks.filter((t) => !["en-cours", "en-attente", "differe"].includes(t.status)).slice(0, 12);
 
   return (
-    <main className="page">
-      <nav style={{ marginBottom: "var(--space-4)" }}>
-        <Button variant="discret" href="#/">
-          ← Entreprise
-        </Button>
-      </nav>
-
-      <header className="hero" style={{ gridTemplateColumns: "auto 1fr", alignItems: "center", columnGap: "var(--space-3)" }}>
-        <Monogram agent={agent} large />
-        <div className="phrase">
-          <h1 className="display">{agent.name}</h1>
-          <p className="muted">{agent.description}</p>
+    <Page>
+      <header className="topline">
+        <div className="actions" style={{ gap: "var(--space-3)", flexWrap: "nowrap" }}>
+          <Monogram agent={agent} large />
+          <div className="hero-text">
+            <h1 className="display">{agent.name}</h1>
+            <p className="muted">{agent.description}</p>
+          </div>
         </div>
-      </header>
-
-      <div className="stack" style={{ maxWidth: 1000 }}>
         <div className="actions">
           <Status agent={agent} current={current} />
           {agent.status === "pause" ? (
-            <Button variant="secondaire" onClick={() => act(`agents/${id}/reprendre`)}>
+            <Button variant="principal" onClick={() => act(`agents/${id}/reprendre`)}>
               Reprendre
             </Button>
           ) : (
@@ -53,88 +47,110 @@ export function Agent({ state, id, now }: { state: State; id: string; now: Date 
             </Button>
           )}
         </div>
+      </header>
 
-        {agent.suggestion && <Suggestion agent={agent} />}
+      <div className="grid">
+        <div className="span-8 stack">
+          <Bloc
+            title="En direct"
+            id="direct"
+            className="glass-strong"
+            aside={current && <span className="pill"><span className="dot-live" aria-hidden="true" /> Commencé {relative(current.startedAt, now)}</span>}
+          >
+            {current ? (
+              <>
+                <div className="actions" style={{ justifyContent: "space-between" }}>
+                  <Phrase meta={uses(agent)}>
+                    <span className="strong">{current.title}</span>
+                  </Phrase>
+                  <Button variant="secondaire" onClick={() => act(`tasks/${current.id}/arreter`)} label="Arrêter l'agent et reprendre la main">
+                    Je m'en occupe
+                  </Button>
+                </div>
+                <div className={current.doc ? "live" : undefined}>
+                  <Feed steps={current.steps} working label={`Ce que fait ${agent.name}`} />
+                  {current.doc && <Doc title={current.doc.title} body={current.doc.body} writing />}
+                </div>
+              </>
+            ) : (
+              <p className="muted">
+                {agent.status === "pause" ? `${agent.name} est en pause. Il ne commence plus rien.` : `${agent.name} est disponible. Il reprend dès qu'une demande arrive.`}
+              </p>
+            )}
+          </Bloc>
 
-        <Bloc title="En direct" id="direct">
-          {current ? (
-            <div className="card">
-              <div className="actions" style={{ justifyContent: "space-between" }}>
-                <Phrase meta={<>Commencé {relative(current.startedAt, now)}{uses(agent)}</>}>
-                  <span className="strong">{current.title}</span>
-                </Phrase>
-                <Button variant="secondaire" onClick={() => act(`tasks/${current.id}/arreter`)} label="Arrêter l'agent et reprendre la main">
-                  Je m'en occupe
-                </Button>
-              </div>
-              <div className={current.doc ? "live" : undefined}>
-                <Feed steps={current.steps} working label={`Ce que fait ${agent.name}`} />
-                {current.doc && <Doc title={current.doc.title} body={current.doc.body} writing />}
-              </div>
-            </div>
-          ) : (
-            <p className="muted">
-              {agent.status === "pause" ? `${agent.name} est en pause.` : `${agent.name} est disponible. Il reprend dès qu'une demande arrive.`}
-            </p>
+          <Bloc title="Ce qu'il a fait" id="historique">
+            <ul className="list" style={{ gap: "var(--space-3)" }}>
+              {history.map((t) => (
+                <li key={t.id}>
+                  <Past task={t} now={now} />
+                </li>
+              ))}
+            </ul>
+          </Bloc>
+        </div>
+
+        <div className="span-4 stack">
+          {agent.suggestion && <Suggestion agent={agent} />}
+
+          {pending.length > 0 && (
+            <Bloc title="En attente de toi" id="attente">
+              <ul className="list">
+                {pending.map((t) => (
+                  <li key={t.id}>
+                    <Approval task={t} agentName={agent.name} />
+                  </li>
+                ))}
+              </ul>
+            </Bloc>
           )}
-        </Bloc>
 
-        {pending.length > 0 && (
-          <Bloc title="En attente de toi" id="attente">
-            {pending.map((t) => (
-              <Approval key={t.id} task={t} agentName={agent.name} />
-            ))}
+          {deferred.length > 0 && (
+            <Bloc title="Va partir" id="differe">
+              <ul className="list">
+                {deferred.map((t) => (
+                  <li key={t.id}>
+                    <Undo task={t} now={now} />
+                  </li>
+                ))}
+              </ul>
+            </Bloc>
+          )}
+
+          <Bloc title="Autonomie" id="autonomie">
+            <AutonomyPicker agent={agent} />
           </Bloc>
-        )}
-
-        {deferred.length > 0 && (
-          <Bloc title="Va partir" id="differe">
-            {deferred.map((t) => (
-              <Undo key={t.id} task={t} now={now} />
-            ))}
-          </Bloc>
-        )}
-
-        <Bloc title="Autonomie" id="autonomie">
-          <AutonomyPicker agent={agent} />
-        </Bloc>
-
-        <Bloc title="Ce qu'il a fait" id="historique">
-          <ul className="bloc-list">
-            {history.map((t) => (
-              <li key={t.id}>
-                <Past task={t} now={now} />
-              </li>
-            ))}
-          </ul>
-        </Bloc>
+        </div>
       </div>
-    </main>
+    </Page>
   );
 }
 
 function Status({ agent, current }: { agent: AgentState; current?: Task }) {
-  if (agent.status === "pause") return <span className="muted">En pause. Il ne commence plus rien.</span>;
+  if (agent.status === "pause") return <span className="pill">En pause</span>;
   if (current)
     return (
-      <span className="actions">
-        <span className="dot-live" aria-hidden="true" /> Travaille en ce moment
+      <span className="pill">
+        <span className="dot-live" aria-hidden="true" /> Travaille
       </span>
     );
-  return <span className="muted">Disponible</span>;
+  return <span className="pill">Disponible</span>;
 }
 
 function Suggestion({ agent }: { agent: AgentState }) {
   const next = agent.autonomy === "je-valide-tout" ? "je-valide-l-important" : "autonome";
   return (
-    <div className="card card-accent">
+    <section className="tile glass-strong" aria-label="Proposition de Nova">
+      <span className="pill pill-accent" style={{ justifySelf: "start" }}>
+        Proposition
+      </span>
       <Phrase>{agent.suggestion}</Phrase>
       <div className="actions">
         <Button variant="principal" onClick={() => act(`agents/${agent.id}/autonomie`, { level: next })}>
           Oui, lui faire confiance
         </Button>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -159,9 +175,11 @@ function Past({ task, now }: { task: Task; now: Date }) {
       <summary>
         <Phrase meta={meta}>{task.outcome ?? task.title}</Phrase>
       </summary>
-      <div className="card">
-        <Feed steps={replay.steps} working={replay.playing} label={`Étapes : ${task.title}`} />
-        {task.doc?.body && <Doc title={task.doc.title} body={task.doc.body} writing={false} />}
+      <div className="inset">
+        <div className={task.doc?.body ? "live" : undefined}>
+          <Feed steps={replay.steps} working={replay.playing} label={`Étapes : ${task.title}`} />
+          {task.doc?.body && <Doc title={task.doc.title} body={task.doc.body} writing={false} />}
+        </div>
         <div className="actions">
           <Button variant="secondaire" onClick={replay.play} disabled={replay.playing}>
             Rejouer
@@ -173,4 +191,4 @@ function Past({ task, now }: { task: Task; now: Date }) {
   );
 }
 
-const uses = (a: AgentState) => (a.appsInUse.length ? ` · utilise ${a.appsInUse.map((x) => APP_NAMES[x] ?? x).join(", ")}` : "");
+const uses = (a: AgentState) => (a.appsInUse.length ? `Utilise ${a.appsInUse.map((x) => APP_NAMES[x] ?? x).join(", ")}` : undefined);

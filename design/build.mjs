@@ -18,14 +18,20 @@ function css() {
     const f = tokens.font[name];
     lines.push(`--text-${name}:${v(f.weight)} ${v(f.size)}/${v(f.line)} var(--font-family)`);
   }
-  lines.push(`--radius:${v(tokens.radius)}`, `--radius-full:${v(tokens["radius-full"])}`);
+  lines.push(`--radius:${v(tokens.radius)}`, `--radius-tile:${v(tokens["radius-tile"])}`, `--radius-panel:${v(tokens["radius-panel"])}`, `--radius-full:${v(tokens["radius-full"])}`);
+  lines.push(`--glass-blur:${v(tokens.glass.blur)}`);
   lines.push(`--shadow-1:${v(tokens.shadow["1"])}`, `--shadow-2:${v(tokens.shadow["2"])}`);
   lines.push(`--motion-fast:${v(tokens.motion.fast)}`, `--motion-base:${v(tokens.motion.base)}`, `--ease:${v(tokens.motion.ease)}`);
-  const colors = (mode) => Object.entries(tokens.color[mode]).map(([k, t]) => `--${k}:${v(t)}`).join(";");
+  const colors = (mode) =>
+    [
+      ...Object.entries(tokens.color[mode]).map(([k, t]) => `--${k}:${v(t)}`),
+      ...Object.entries(tokens.glass[mode]).map(([k, t]) => `--glass-${k}:${v(t)}`),
+      ...Object.entries(tokens.backdrop[mode]).map(([k, t]) => `--backdrop-${k}:${v(t)}`),
+    ].join(";");
   return `/* Généré par design/build.mjs depuis design/tokens.json — ne pas modifier à la main. */
 :root{${lines.join(";")};color-scheme:light dark;${colors("light")}}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${colors("dark")};--shadow-1:none;--shadow-2:none}}
-:root[data-theme="dark"]{${colors("dark")};--shadow-1:none;--shadow-2:none}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){${colors("dark")}}}
+:root[data-theme="dark"]{${colors("dark")}}
 @media (prefers-reduced-motion:reduce){:root{--motion-fast:0ms;--motion-base:0ms}}
 `;
 }

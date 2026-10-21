@@ -6,6 +6,7 @@ let
   nova = pkgs.callPackage ../packages/nova.nix { };
   nova-shell = pkgs.callPackage ../packages/nova-shell { };
   dock = pkgs.gnomeExtensions.dash-to-dock;
+  blur = pkgs.gnomeExtensions.blur-my-shell; # le verre : flou derrière le dock et la barre du haut
   port = 7777;
 
   # Le dirigeant du poste en démonstration ; sur une vraie flotte, un poste = une personne (Phase 3).
@@ -72,12 +73,17 @@ let
     ++ lib.mapAttrsToList (id: _: "nova-web-${id}.desktop") cfg.webApps
     ++ lib.mapAttrsToList (id: _: "nova-agent-${id}.desktop") cfg.agents;
 
+  # Le fond : les mêmes formes douces que Nova Home (design/tokens.json, « backdrop »).
   wallpaper = pkgs.writeText "nova-fond.svg" ''
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
-      <defs><radialGradient id="g" cx="80%" cy="10%" r="120%">
-        <stop offset="0" stop-color="${cfg.brand.accent}" stop-opacity=".18"/>
-        <stop offset=".6" stop-color="#F5F5F7"/></radialGradient></defs>
-      <rect width="1920" height="1080" fill="#F5F5F7"/><rect width="1920" height="1080" fill="url(#g)"/>
+      <defs><filter id="f" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="90"/></filter></defs>
+      <rect width="1920" height="1080" fill="#E8ECF4"/>
+      <g filter="url(#f)" opacity=".9">
+        <circle cx="300" cy="80" r="560" fill="${cfg.brand.accent}" fill-opacity=".55"/>
+        <circle cx="1760" cy="260" r="420" fill="#F2B8CF"/>
+        <circle cx="1350" cy="1180" r="520" fill="#C7C1F4"/>
+        <circle cx="620" cy="1120" r="360" fill="#B8E6DA"/>
+      </g>
     </svg>
   '';
 in
@@ -93,7 +99,7 @@ in
     services.gnome.games.enable = false;
     environment.gnome.excludePackages = with pkgs; [ gnome-tour gnome-user-docs epiphany yelp ];
 
-    environment.systemPackages = [ open nova-shell dock pkgs.gnome-console ]
+    environment.systemPackages = [ open nova-shell dock blur pkgs.gnome-console ]
       ++ map (a: a.package) apps
       ++ lib.flatten (entreprise ++ agents ++ webApps);
 
@@ -102,7 +108,7 @@ in
       lockAll = true;
       settings = {
         "org/gnome/shell" = {
-          enabled-extensions = [ dock.extensionUuid nova-shell.extensionUuid ];
+          enabled-extensions = [ dock.extensionUuid blur.extensionUuid nova-shell.extensionUuid ];
           disable-user-extensions = false;
           favorite-apps = favorites;
           welcome-dialog-last-shown-version = "999";
@@ -118,13 +124,17 @@ in
           disable-overview-on-startup = true;
           running-indicator-style = "DOTS";
           transparency-mode = "FIXED";
-          background-opacity = 0.72;
+          background-opacity = 0.45;
+          custom-background-color = true;
+          background-color = "#ffffff";
           custom-theme-shrink = true;
           apply-custom-theme = false;
           show-icons-emblems = true;
           show-icons-notifications-counter = true;
           click-action = "focus-or-appspread";
         };
+        "org/gnome/shell/extensions/blur-my-shell/panel".blur = true;
+        "org/gnome/shell/extensions/blur-my-shell/dash-to-dock".blur = true;
         "org/gnome/desktop/interface" = {
           font-name = "Inter Variable 11";
           document-font-name = "Inter Variable 11";

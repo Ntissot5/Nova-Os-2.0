@@ -3,9 +3,10 @@
 import { useState } from "react";
 import type { AgentState, Autonomy, Task } from "../../../nova-daemon/src/types";
 import { Feed } from "../components/Feed";
+import { Page } from "../components/Shell";
 import { AutonomyPicker, Bloc, Button, Chiffre, Doc, Monogram, Phrase } from "../components/ui";
 
-const COLORS = ["bg", "surface", "text", "text-muted", "accent", "positive", "attention", "critical"];
+const COLORS = ["glass-bg", "glass-strong", "text", "text-muted", "accent", "positive", "attention", "critical"];
 const SPACES = ["0-5", "1", "2", "3", "4", "6", "8"];
 const TYPES = ["display", "title", "body", "body-strong", "caption"];
 
@@ -29,17 +30,12 @@ const steps: Task["steps"] = [
 export function Design() {
   const [autonomy, setAutonomy] = useState<Autonomy>("je-valide-l-important");
   return (
-    <main className="page">
-      <nav style={{ marginBottom: "var(--space-4)" }}>
-        <Button variant="discret" href="#/">
-          ← Entreprise
-        </Button>
-      </nav>
-      <header className="hero">
+    <Page>
+      <header className="topline hero-text">
         <h1 className="display">Système de design</h1>
         <p className="muted">Source : design/tokens.json. Lecture humaine : DESIGN-SYSTEM.md.</p>
       </header>
-      <div className="stack" style={{ maxWidth: "var(--measure)" }}>
+      <div className="stack" style={{ maxWidth: 880 }}>
         <Bloc title="Couleurs">
           <div className="swatches">
             {COLORS.map((c) => (
@@ -86,7 +82,7 @@ export function Design() {
           <AutonomyPicker agent={{ ...agent, autonomy }} onChange={setAutonomy} />
         </Bloc>
         <Bloc title="Fil en direct et document">
-          <div className="card">
+          <div className="inset">
             <div className="live">
               <Feed steps={steps} working label="Exemple de fil" />
               <Doc title="Relance — premier rappel" body={"Bonjour,\n\nSauf erreur de notre part, "} writing />
@@ -94,6 +90,6 @@ export function Design() {
           </div>
         </Bloc>
       </div>
-    </main>
+    </Page>
   );
 }
