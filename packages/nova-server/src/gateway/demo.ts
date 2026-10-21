@@ -3,7 +3,7 @@
 // En Phase 1, les mêmes agents travaillent sur les vrais connecteurs MCP.
 
 import type { Engine, Scenario } from "./engine.js";
-import type { Task } from "./types.js";
+import type { Task } from "../core/types.js";
 
 const s = (text: string, app?: string, ms = 2200, doc?: string) => ({ text, app, ms, doc });
 

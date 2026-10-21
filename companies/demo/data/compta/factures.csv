@@ -1,0 +1,4 @@
+id;fournisseur;objet;montant;echeance;iban;statut
+2026-418;Sanitaires Morel SA;Remplacement conduite, Rue du Lac 14;1240.50;2026-11-19;CH93 0076 2011 6238 5295 7;a-payer
+SW-88412;Swisscom;Ligne fixe de la régie, octobre;89.90;2026-10-31;CH40 0900 0000 3000 0001 5;a-payer
+NET-2026-10;Nettoyage Léman Sàrl;Nettoyage des communs, octobre;420.00;2026-10-30;CH58 0076 7000 1234 5678 9;payee

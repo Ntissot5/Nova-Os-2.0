@@ -2,9 +2,9 @@
 // journalise chaque étape et publie l'état à l'interface.
 
 import { EventEmitter } from "node:events";
-import { decide, suggestion } from "./autonomy.js";
-import type { Journal } from "./journal.js";
-import type { Action, AgentState, Approval, Autonomy, CompanyConfig, State, Task } from "./types.js";
+import { decide, suggestion } from "../core/autonomy.js";
+import type { Journal } from "../core/journal.js";
+import type { Action, AgentState, Approval, Autonomy, CompanyConfig, State, Task } from "../core/types.js";
 
 export interface Scenario {
   title: string;

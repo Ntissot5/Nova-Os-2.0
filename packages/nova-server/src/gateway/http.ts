@@ -17,10 +17,10 @@ import { readFileSync, existsSync, statSync } from "node:fs";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { userInfo } from "node:os";
 import { Conflict, Engine, NotFound } from "./engine.js";
-import { fileJournal, nullJournal } from "./journal.js";
+import { fileJournal, nullJournal } from "../core/journal.js";
 import { startDemo } from "./demo.js";
-import { publishBadges } from "./badges.js";
-import type { Autonomy, CompanyConfig } from "./types.js";
+import { publishBadges } from "../daemon/badges.js";
+import type { Autonomy, CompanyConfig } from "../core/types.js";
 
 const env = process.env;
 const port = Number(env.NOVA_PORT ?? 7777);
