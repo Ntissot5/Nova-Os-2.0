@@ -8,7 +8,7 @@ Une entreprise = un fichier `company.nix` + un dossier `data/`. Zéro lock-in.
 1. **Base** — NixOS immuable et déclaratif.
 2. **Bus d'API** — un serveur MCP par source (mail, calendrier, fichiers, compta, téléphonie…).
 3. **Runtime d'agents** — Claude Code et Claude Agent SDK, branchés sur le bus MCP.
-4. **Shell & Dashboard** — un seul écran pour le dirigeant : flux, validations, coûts.
+4. **Nova Desktop** — remplace Windows : un bureau dont le dock est la boîte (apps, agents, vue d'ensemble).
 
 ## Documents
 

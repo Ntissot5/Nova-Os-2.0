@@ -4,7 +4,7 @@
 
 ## 1. En une phrase
 
-Nova OS est une distribution NixOS dont la configuration complète d'une entreprise tient dans **`company.nix` + `data/`** ; tout ce que l'entreprise utilise passe par un **bus MCP unique**, sur lequel travaillent des **agents Claude** encadrés, et que le dirigeant pilote depuis **un seul écran**.
+Nova OS est une distribution NixOS dont la configuration complète d'une entreprise tient dans **`company.nix` + `data/`** ; tout ce que l'entreprise utilise passe par un **bus MCP unique**, sur lequel travaillent des **agents Claude** encadrés, et qui remplace Windows sur le poste : **le bureau lui-même est la boîte** (son dock, ses apps, ses agents, sa vue d'ensemble).
 
 ## 2. Les deux rôles de machine
 
@@ -25,7 +25,7 @@ Règle : une couche ne parle qu'à la couche directement voisine, via une interf
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ 4. Shell & Dashboard   nova-home (UI) ←→ nova-daemon (API)    │
+│ 4. Nova Desktop        nova-shell · nova-home · nova-daemon   │
 ├──────────────────────────────────────────────────────────────┤
 │ 3. Runtime d'agents    Claude Agent SDK · skills · budgets    │
 ├──────────────────────────────────────────────────────────────┤
@@ -79,24 +79,51 @@ nova.agents.relances-loyers = {
 - **Mémoire d'entreprise** : `data/memory/` (Markdown : vocabulaire, contacts, règles). Lecture par tous les agents autorisés ; écriture uniquement via un outil MCP `memory.propose`, validée par un humain.
 - **Scénarios rejouables** : chaque agent a un scénario de bout en bout (entrées enregistrées → sorties attendues) exécuté en CI contre des connecteurs simulés.
 
-### 3.4 Couche 4 — Shell & Dashboard
+### 3.4 Couche 4 — Nova Desktop (le poste de travail)
 
-- **Shell** : GNOME (Wayland) réduit à l'essentiel et verrouillé par `company.nix` (D-005). Pas de barre d'apps à configurer, pas de paramètres exposés. Au démarrage s'ouvre **Nova Home**.
-- **`nova-home`** : application web locale (React + TypeScript, build statique), ouverte en fenêtre d'application sans chrome de navigateur.
-- **`nova-daemon`** : API locale du poste, seule source de données de `nova-home`. Parle au Hub via le gateway. Aucune logique métier dans l'UI.
-- **Un écran = une intention.** Écrans prévus pour le MVP :
-  1. **Accueil** (tout employé) : « Bonjour Noa. » + ce qui demande son attention.
-  2. **Dirigeant** : ce qui s'est passé · en attente de validation · ce que ça a coûté.
-  3. **Flotte** (Phase 3) : postes, version, mise à jour, rollback, révocation.
-- **Logiciels Windows-only** : encapsulés, jamais émulés globalement — version web si elle existe, sinon une VM Windows isolée (libvirt) pour ce seul logiciel, lancée depuis le shell comme une app.
+**Nova OS remplace Windows sur le poste.** L'employé allume sa machine et se retrouve sur un bureau complet, aussi fluide qu'un Mac : fenêtres, apps, fichiers, navigateur, impression. La différence : **le bureau est la boîte**.
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│ Régie Dupont SA        Rechercher ou demander… (/)    2 à valider  │ ← barre du haut
+│                                                                    │
+│                     (fenêtres des apps ouvertes)                   │
+│                                                                    │
+│   ╭──────────────────────────────────────────────────────────╮     │
+│   │ ◉ Entreprise   Mail Agenda Fichiers Compta Gérance   ·   │     │ ← dock
+│   │                Compta● Locataires● Relances②             │     │
+│   ╰──────────────────────────────────────────────────────────╯     │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+- **Le dock = la boîte.** Il n'est pas réglé par l'utilisateur : il est généré depuis `company.nix`. Trois groupes, séparés par l'espace :
+  1. **Entreprise** : toujours en premier, ouvre la vue d'ensemble.
+  2. **Les apps de la boîte** : mail, agenda, fichiers, logiciel de compta, logiciel métier. Natives Linux, web (en fenêtre d'app) ou Windows encapsulées : pour l'employé, elles se comportent toutes de la même façon.
+  3. **Les agents** : un par métier (Compta, Locataires, Relances…), avec une pastille d'état : actif, en pause, ou nombre d'actions en attente de validation.
+- **L'espace Entreprise** (plein écran, comme Mission Control sur Mac) : **toute la boîte en une vision**.
+  - *Ce qui s'est passé* · *ce qui attend une validation* · *ce que ça a coûté*.
+  - **Agents** : pour chacun, ce qu'il fait, ses dernières actions, son budget du mois, et les commandes `Mettre en pause` / `Reprendre`.
+  - **Flotte** (dirigeant, Phase 3) : postes, versions, mise à jour, rollback, révocation.
+- **Chaque agent a sa page** (clic dans le dock) : son activité en phrases, ses validations en attente, les règles qu'il suit (tirées de `data/memory/`), son coût.
+- **Barre du haut** : nom de l'entreprise, recherche et questions en langage naturel (`/`), compteur de validations, état du poste. Rien d'autre.
+- **Ce que chacun voit dépend de son rôle** (dans `company.nix`) : un employé voit ses apps et ses agents ; le dirigeant voit tout et contrôle tout.
+- **Tout est contrôlable, rien n'est réglable** : on peut mettre un agent en pause, valider, refuser, révoquer, revenir en arrière ; on ne règle aucun paramètre technique.
+
+**Comment c'est construit (D-013)**
+- **Moteur** : GNOME Shell / Mutter (Wayland), invisible pour l'utilisateur. On garde ce qu'il fait de mieux (fenêtres, multi-écrans, accessibilité Orca, clavier, impression, compatibilité des apps) et on remplace tout ce qui se voit.
+- **`nova-shell`** : extension GNOME Shell qui remplace la barre du haut et le dock, et dessine l'espace Entreprise. Elle lit le dock et les rôles depuis la configuration générée par `company.nix`.
+- **`nova-home`** : l'interface de l'espace Entreprise et des pages d'agents (React + TypeScript, build statique), affichée par le shell en plein écran, sans chrome de navigateur.
+- **`nova-daemon`** : l'API locale du poste, seule source de données du shell et de `nova-home`. Parle au Hub via le gateway. Aucune logique métier dans l'interface.
+- **Logiciels Windows-only** : encapsulés, jamais émulés globalement. Version web si elle existe, sinon une VM Windows isolée (libvirt) dont la seule fenêtre apparaît dans le dock comme une app normale.
+- **Bureautique** : la suite de la boîte (Microsoft 365 web, OnlyOffice ou LibreOffice) est fixée dans `company.nix`.
 
 ## 4. Les flux principaux
 
 **a. Question en langage naturel (Phase 1)**
-Employé → Nova Home → nova-daemon → Claude (agent « assistant ») → nova-gateway → `mcp-mail` + `mcp-calendar` + `mcp-compta` → réponse en une phrase, sources citées. Cible : < 10 s.
+Employé → barre du haut (`/`) → nova-daemon → Claude (agent « assistant ») → nova-gateway → `mcp-mail` + `mcp-calendar` + `mcp-compta` → réponse en une phrase, sources citées. Cible : < 10 s.
 
 **b. Action irréversible (Phase 2)**
-Agent → `mail.send` (destructif) → nova-gateway **met en attente** → carte « Relance prête pour M. Dupont (2 loyers) » dans le dashboard → le dirigeant valide (clavier : `Entrée`) → le gateway exécute → journal.
+Agent → `mail.send` (destructif) → nova-gateway **met en attente** → pastille ② sur l'agent Relances dans le dock + carte « Relance prête pour M. Dupont (2 loyers) » dans l'espace Entreprise → le dirigeant valide (clavier : `Entrée`) → le gateway exécute → journal.
 
 **c. Mise à jour d'entreprise**
 Modifier `company.nix` (ou un clic dans le dashboard qui le modifie) → build sur le Hub → publication dans le cache → chaque poste bascule atomiquement à la nouvelle génération → rollback possible.
@@ -148,7 +175,8 @@ modules/                   Modules NixOS nova.* (base, hub, poste, shell, agents
 packages/
   nova-daemon/             API locale (TypeScript)
   nova-gateway/            Passerelle MCP : permissions, approbations, journal
-  nova-home/               Interface (React + TypeScript)
+  nova-shell/              Extension GNOME Shell : barre du haut, dock, espace Entreprise
+  nova-home/               Espace Entreprise et pages d'agents (React + TypeScript)
   connectors/mcp-*/        Un serveur MCP par source + son test de contrat
 design/tokens.json         Source unique du système de design
 verticals/gerance/         Skills + connecteurs du premier vertical

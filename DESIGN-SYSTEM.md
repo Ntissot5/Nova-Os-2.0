@@ -86,10 +86,13 @@ Une animation explique un changement d'état, sinon elle n'existe pas. `prefers-
 
 ## 3. Composants
 
-Sept composants pour le MVP. Un besoin non couvert se résout d'abord en composant ces sept-là.
+Dix composants pour le MVP : trois pour le bureau, sept pour les contenus. Un besoin non couvert se résout d'abord en composant ceux-là.
 
 | Composant | Rôle | Variantes |
 |---|---|---|
+| **Barre du haut** | Nom de l'entreprise, champ `/`, compteur de validations, état du poste | — |
+| **Dock** | La boîte : Entreprise · apps · agents, groupes séparés par l'espace ; surface translucide, `radius`, `shadow-1` | — |
+| **Pastille d'agent** | État d'un agent sur son icône : point (actif), creux (en pause), chiffre (validations en attente) | positive, muted, accent |
 | **Phrase** | Une information = une phrase humaine, avec un élément en `text-body-strong` | normale, état (positive/attention/critical) |
 | **Bloc** | Groupe de phrases sous un `text-title` ; espacé par `space-6`, sans cadre | — |
 | **Bouton** | Une action | `principal` (accent, une seule par écran), `secondaire` (surface), `discret` (texte) |
@@ -105,10 +108,10 @@ Exclus volontairement : onglets, tableaux de données, graphiques décoratifs, b
 - Phrases complètes, voix active, tutoiement ou vouvoiement fixé par `company.nix`.
 - Le chiffre d'abord : « **3 locataires** en retard, relance prête. »
 - Toujours dire ce qui va se passer : « Valider envoie 3 e-mails. »
-- Pas de jargon technique visible : jamais « agent », « MCP », « token » côté employé. Côté dirigeant, « assistant » et « coût ».
+- Pas de jargon technique visible : jamais « MCP » ni « token ». Les agents portent le nom de leur métier (« Compta », « Relances »).
 - Montants en CHF, format suisse : `1'240.50 CHF`. Dates relatives quand elles ont moins de 7 jours (« hier, 16 h 05 »).
 
-## 5. Exemple — écran Dirigeant (cible Phase 2, gabarit dès Phase 0)
+## 5. Exemple — espace Entreprise, vue dirigeant (cible Phase 2, gabarit dès Phase 0)
 
 ```
 Bonjour Noa.                                                  ← text-display
@@ -130,5 +133,5 @@ Trois blocs, aucune bordure, une seule couleur d'accent (le bouton « Valider »
 
 ## 6. Mise en œuvre
 
-- `design/tokens.json` (format W3C Design Tokens) → génère les variables CSS de `nova-home` et le thème GNOME (couleur d'accent, police) au build Nix.
+- `design/tokens.json` (format W3C Design Tokens) → génère au build Nix les variables CSS de `nova-home` et la feuille de style de `nova-shell` (barre, dock, pastilles).
 - Une page `nova-home/#/design` affiche tous les tokens et composants en clair et en sombre : c'est la référence vivante et la base des tests visuels.
