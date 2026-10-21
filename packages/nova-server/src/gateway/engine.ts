@@ -274,7 +274,7 @@ export class Engine extends EventEmitter {
     task.status = "terminee";
     task.outcome = outcome;
     task.endedAt = this.now().toISOString();
-    this.journal.write({ qui: `agent:${task.agentId}`, quoi: "tache.fin", resultat: outcome, tache: task.id });
+    this.journal.write({ qui: `agent:${task.agentId}`, quoi: "tache.fin", resultat: outcome, minutes: task.minutesSaved, tache: task.id });
     this.recount();
     this.changed();
   }

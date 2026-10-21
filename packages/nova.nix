@@ -10,6 +10,7 @@ let
       ../package-lock.json
       ../design
       ../companies/demo/data # données des tests de contrat
+      ../verticals # skills métier des agents
       ./nova-server/package.json
       ./nova-server/tsconfig.json
       ./nova-server/src
@@ -49,6 +50,7 @@ buildNpmPackage {
     cp -r node_modules $lib/
     cp -r packages/nova-server/dist packages/nova-server/package.json $lib/packages/nova-server/
     cp -r packages/nova-home/dist $out/share/nova-home
+    cp -r verticals $out/share/nova-verticals
     makeWrapper ${nodejs_22}/bin/node $out/bin/nova-gateway --add-flags $lib/packages/nova-server/dist/gateway/main.js
     makeWrapper ${nodejs_22}/bin/node $out/bin/nova-daemon --add-flags $lib/packages/nova-server/dist/daemon/main.js
     runHook postInstall

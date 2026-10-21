@@ -1,0 +1,67 @@
+#!/usr/bin/env node
+// Rapport de la Phase 2 chez le pilote : heures administratives par semaine avant et après Nova,
+// heures gagnées selon les agents, coût de l'IA par poste et par mois.
+//   scripts/rapport-pilote <dossier data/> <date de mise en service AAAA-MM-JJ> [nombre de postes]
+// Seuil de réussite proposé (ROADMAP) : ≥ 4 h gagnées par semaine, < 60 CHF par poste et par mois.
+
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+
+const [data, debut, postesArg] = process.argv.slice(2);
+if (!data || !/^\d{4}-\d{2}-\d{2}$/.test(debut ?? "")) {
+  console.error("Usage : scripts/rapport-pilote <dossier data/> <AAAA-MM-JJ> [postes]");
+  process.exit(2);
+}
+const postes = Number(postesArg ?? 1);
+
+// Lundi d'une semaine ISO « 2026-W43 ».
+function monday(week) {
+  const [y, w] = week.split("-W").map(Number);
+  const jan4 = new Date(Date.UTC(y, 0, 4));
+  const d = new Date(jan4);
+  d.setUTCDate(jan4.getUTCDate() - ((jan4.getUTCDay() || 7) - 1) + (w - 1) * 7);
+  return d.toISOString().slice(0, 10);
+}
+
+const csv = join(data, "mesures/releves.csv");
+const releves = existsSync(csv)
+  ? readFileSync(csv, "utf8")
+      .trim()
+      .split("\n")
+      .slice(1)
+      .map((l) => l.split(";"))
+      .map(([semaine, heures]) => ({ semaine, lundi: monday(semaine), heures: Number(heures) }))
+  : [];
+const avant = releves.filter((r) => r.lundi < debut);
+const apres = releves.filter((r) => r.lundi >= debut);
+const moyenne = (xs) => (xs.length ? xs.reduce((s, r) => s + r.heures, 0) / xs.length : NaN);
+
+// Journal : heures gagnées selon les agents (tâches terminées) et coût de l'IA, depuis la mise en service.
+let minutes = 0;
+let usd = 0;
+const jours = new Set();
+const dir = join(data, "journal");
+for (const f of existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith(".jsonl")) : []) {
+  for (const line of readFileSync(join(dir, f), "utf8").split("\n")) {
+    if (!line) continue;
+    const e = JSON.parse(line);
+    if (e.ts.slice(0, 10) < debut) continue;
+    jours.add(e.ts.slice(0, 10));
+    if (typeof e.coutUSD === "number") usd += e.coutUSD;
+    if (e.quoi === "tache.fin" && typeof e.minutes === "number") minutes += e.minutes;
+  }
+}
+const semaines = Math.max(1, jours.size / 7);
+const mois = Math.max(1 / 30, jours.size / 30);
+const CHF_PAR_USD = Number(process.env.CHF_PAR_USD ?? 0.8);
+
+const gainReleve = moyenne(avant) - moyenne(apres);
+const coutPosteMois = (usd * CHF_PAR_USD) / postes / mois;
+console.log(`Pilote depuis le ${debut} (${jours.size} jours d'activité, ${postes} poste${postes > 1 ? "s" : ""})\n`);
+console.log(`Heures d'administratif par semaine : ${moyenne(avant).toFixed(1)} h avant (${avant.length} relevés), ${moyenne(apres).toFixed(1)} h après (${apres.length} relevés)`);
+console.log(`→ Gain mesuré : ${Number.isNaN(gainReleve) ? "pas encore assez de relevés" : `${gainReleve.toFixed(1)} h par semaine`}`);
+console.log(`Gain annoncé par les agents : ${(minutes / 60 / semaines).toFixed(1)} h par semaine`);
+console.log(`Coût de l'IA : ${(usd * CHF_PAR_USD).toFixed(2)} CHF au total, ${coutPosteMois.toFixed(2)} CHF par poste et par mois`);
+const ok = gainReleve >= 4 && coutPosteMois < 60 && apres.length >= 4;
+console.log(`\nSeuil (≥ 4 h par semaine, < 60 CHF par poste et par mois, 4 semaines de relevés) : ${ok ? "atteint" : "pas encore atteint"}`);
+process.exit(ok ? 0 : 1);

@@ -55,6 +55,23 @@ export async function askStream(question: string, onEvent: (e: AskEvent) => void
   }
 }
 
+export interface Moi {
+  role?: "dirigeant" | "employe";
+  agentsActifs: boolean;
+}
+
+/** Qui est connecté au poste, et si de vrais agents Claude tournent sur le Hub. */
+export function useMoi() {
+  const [moi, setMoi] = useState<Moi>({ agentsActifs: false });
+  useEffect(() => {
+    fetch("/api/moi")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m) => m && setMoi(m))
+      .catch(() => {});
+  }, []);
+  return moi;
+}
+
 export async function act(path: string, body?: unknown) {
   const res = await fetch(`/api/${path}`, {
     method: "POST",

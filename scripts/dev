@@ -15,7 +15,7 @@ node design/build.mjs theme "$accent" "$state/theme.css"
 person=$(node -e 'const p=JSON.parse(require("fs").readFileSync(process.argv[1])).people; console.log(Object.keys(p).find(k=>p[k].role==="dirigeant"))' "$state/company.json")
 
 npm run build -w nova-server >/dev/null
-NOVA_COMPANY="$state/company.json" NOVA_DATA="$state/data" NOVA_DEMO=1 node packages/nova-server/dist/gateway/main.js &
+NOVA_COMPANY="$state/company.json" NOVA_DATA="$state/data" NOVA_DEMO=1 NOVA_SKILLS=verticals node packages/nova-server/dist/gateway/main.js &
 gw=$!
 NOVA_PERSON="$person" NOVA_THEME_CSS="$state/theme.css" node packages/nova-server/dist/daemon/main.js &
 dm=$!

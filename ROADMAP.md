@@ -53,7 +53,16 @@
 - Suivi interne du coût par poste, choix automatique du modèle selon la tâche.
 - Scénario de bout en bout rejouable par agent.
 
-**Mesure :** 2 semaines de relevé du temps administratif **avant** déploiement chez le pilote, puis 30 jours **après** (même grille, saisie hebdomadaire de 2 minutes). Coût API lu dans le journal.
+**Mesure :** 2 semaines de relevé du temps administratif **avant** déploiement chez le pilote, puis 30 jours **après** (même grille, saisie hebdomadaire de 2 minutes). Coût API lu dans le journal. `scripts/rapport-pilote <data> <mise en service> <postes>`.
+
+**État (21 octobre 2026) :**
+- ✓ Agents réels : skills de gérance (tri des demandes, relances, comptabilité), tri par Haiku, travail par Sonnet, déclencheurs (nouveau mail, tournée quotidienne, « Lancer maintenant »).
+- ✓ Actions proposées par l'agent, décidées par le moteur sur l'aperçu du connecteur ; plafond de paiement indépendant du nom de l'outil (D-024).
+- ✓ Le document s'écrit sous les yeux, reprise en main, rejouer, « Pourquoi ? » rempli par l'agent (règle et sources).
+- ✓ Scénarios rejouables avec un faux modèle : fuite d'eau de bout en bout, plafond en autonome, reprise en main.
+- ✓ Relevé hebdomadaire, page des coûts (dirigeant), rapport du pilote.
+- ⏳ Premier travail réel des agents : en attente d'une clé d'API Anthropic.
+- ⏳ Mesure avant/après : en attente du pilote.
 **Seuil de réussite proposé :** ≥ 4 h économisées par semaine pour un coût < 60 CHF par poste et par mois.
 
 ## Phase 3 — Export & flotte (semaines 10–11)

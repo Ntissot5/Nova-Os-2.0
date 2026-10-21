@@ -1,7 +1,7 @@
 // La page d'un agent : on le regarde travailler en direct, on règle son autonomie, on relit ce qu'il a fait.
 
 import type { AgentState, State, Task } from "../../../nova-server/src/core/types";
-import { act } from "../api";
+import { act, useMoi } from "../api";
 import { APP_NAMES } from "../apps";
 import { Feed } from "../components/Feed";
 import { Page } from "../components/Shell";
@@ -11,6 +11,7 @@ import { Approval } from "./Entreprise";
 
 export function Agent({ state, id, now }: { state: State; id: string; now: Date }) {
   const agent = state.agents.find((a) => a.id === id);
+  const moi = useMoi();
   if (!agent)
     return (
       <Page>
@@ -44,6 +45,11 @@ export function Agent({ state, id, now }: { state: State; id: string; now: Date 
           ) : (
             <Button variant="secondaire" onClick={() => act(`agents/${id}/pause`)}>
               Mettre en pause
+            </Button>
+          )}
+          {moi.agentsActifs && agent.status === "disponible" && !current && (
+            <Button variant="principal" onClick={() => act(`agents/${id}/lancer`)}>
+              Lancer maintenant
             </Button>
           )}
         </div>

@@ -1,13 +1,15 @@
 // L'espace Entreprise : toute la boîte en une vision, en tuiles de verre.
 
 import type { AgentState, State, Task } from "../../../nova-server/src/core/types";
-import { act } from "../api";
+import { act, useMoi } from "../api";
+import { ReleveTile } from "./Mesures";
 import { Feed } from "../components/Feed";
 import { Page } from "../components/Shell";
 import { AUTONOMY_LABEL, Bloc, Button, Doc, Monogram, Phrase, Undo, WhyButton } from "../components/ui";
 import { duration, greeting, plural, relative } from "../format";
 
 export function Entreprise({ state, now }: { state: State; now: Date }) {
+  const moi = useMoi();
   const agents = new Map(state.agents.map((a) => [a.id, a]));
   const working = state.tasks.filter((t) => t.status === "en-cours");
   const pending = state.tasks.filter((t) => t.status === "en-attente");
@@ -106,7 +108,18 @@ export function Entreprise({ state, now }: { state: State; now: Date }) {
               </ul>
             </Bloc>
           )}
-          <Bloc title="Ce que ça t'a fait gagner" id="gains">
+          {moi.role === "dirigeant" && <ReleveTile now={now} />}
+          <Bloc
+            title="Ce que ça t'a fait gagner"
+            id="gains"
+            aside={
+              moi.role === "dirigeant" && (
+                <a className="caption" href="#/couts">
+                  Coûts
+                </a>
+              )
+            }
+          >
             <div className="phrase">
               <p className="chiffre">{duration(state.gains.minutesThisWeek)}</p>
               <p className="caption">de travail administratif cette semaine, sur {plural(state.gains.tasksThisWeek, "tâche", "tâches")}.</p>
