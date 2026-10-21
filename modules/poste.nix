@@ -73,17 +73,12 @@ let
     ++ lib.mapAttrsToList (id: _: "nova-web-${id}.desktop") cfg.webApps
     ++ lib.mapAttrsToList (id: _: "nova-agent-${id}.desktop") cfg.agents;
 
-  # Le fond : les mêmes formes douces que Nova Home (design/tokens.json, « backdrop »).
+  # Le fond : le même gris calme que Nova Home, à peine éclairé par l'accent en haut (design/tokens.json, « backdrop »).
   wallpaper = pkgs.writeText "nova-fond.svg" ''
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
-      <defs><filter id="f" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="90"/></filter></defs>
-      <rect width="1920" height="1080" fill="#E8ECF4"/>
-      <g filter="url(#f)" opacity=".9">
-        <circle cx="300" cy="80" r="560" fill="${cfg.brand.accent}" fill-opacity=".55"/>
-        <circle cx="1760" cy="260" r="420" fill="#F2B8CF"/>
-        <circle cx="1350" cy="1180" r="520" fill="#C7C1F4"/>
-        <circle cx="620" cy="1120" r="360" fill="#B8E6DA"/>
-      </g>
+      <defs><radialGradient id="l" cx="30%" cy="-10%" r="90%"><stop offset="0" stop-color="${cfg.brand.accent}" stop-opacity=".09"/><stop offset=".7" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient></defs>
+      <rect width="1920" height="1080" fill="#F2F2F5"/>
+      <rect width="1920" height="1080" fill="url(#l)"/>
     </svg>
   '';
 in

@@ -1,12 +1,13 @@
 # Système de design — Nova OS
 
-> Statut : v0.2 : matière verre (D-018). Source unique des valeurs : `design/tokens.json` (Phase 0). Ce document en est la lecture humaine.
+> Statut : v0.3 « Calme » (D-033), qui remplace la matière verre sur fond coloré (D-018). Source unique des valeurs : `design/tokens.json` (Phase 0). Ce document en est la lecture humaine.
 
 ## 1. Principes
 
 1. **Soustraction.** Avant d'ajouter, enlever. Si un élément peut disparaître sans perte de sens, il disparaît.
 2. **Un écran = une intention.** Un écran répond à une seule question.
-3. **Du verre sur un fond vivant.** Les contenus flottent dans des tuiles de verre dépoli posées sur un fond doux et coloré, sur le bureau comme dans Nova Home. La hiérarchie vient de l'espace, de la graisse et de l'opacité du verre, jamais de bordures, de séparateurs ou d'icônes décoratives.
+3. **Le fond se tait.** Un gris très clair (noir en sombre), à peine éclairé par l'accent en haut. Deux matières seulement : des cartes pleines et une barre latérale translucide. Jamais de carte dans une carte : dans une carte, les éléments sont des lignes séparées par un filet. La hiérarchie vient de la taille, de la graisse et de l'espace.
+11. **Chaque chose a un symbole, pas une lettre.** Un agent ou un département se reconnaît à son symbole sur une pastille arrondie de sa couleur, choisi d'après son nom.
 4. **Le texte est l'interface.** Des phrases complètes et humaines plutôt que des tableaux bruts.
 5. **Zéro paramètre exposé aux employés.** Le dirigeant construit l'entreprise dans l'Atelier, en phrases (D-031) ; l'installation pose la base dans `company.nix`. Un employé ne règle rien : il travaille.
 6. **Accessible d'abord.** Contraste AA minimum, clavier complet, lecteur d'écran, mouvement réduit respecté.
@@ -31,41 +32,45 @@
 
 Largeur de lecture maximale : 720 px. Tout s'aligne à gauche.
 
-### 2.2 Typographie — Inter
+### 2.2 Typographie — la police du système
+
+`-apple-system` / SF Pro sur Mac, Segoe sur Windows, Inter ailleurs (embarquée). Les grands chiffres en version arrondie (`ui-rounded`).
 
 | Token | Taille / interligne | Graisse | Usage |
 |---|---|---|---|
-| `text-display` | 40 / 48 | 600 | Une fois par écran : le salut ou le titre |
-| `text-title` | 22 / 32 | 600 | Titre de bloc |
-| `text-body` | 17 / 24 | 400 | Phrases, contenu |
-| `text-body-strong` | 17 / 24 | 600 | Le chiffre ou le nom dans une phrase |
-| `text-caption` | 13 / 16 | 500 | Horodatage, source, coût unitaire |
+| `text-display` | 32 / 38 | 700 | Une fois par écran : le salut ou le titre |
+| `text-title` | 20 / 25 | 600 | Nom d'un agent ou d'un département dans sa carte, titre de dialogue |
+| `text-headline` | 17 / 22 | 600 | Titre d'une carte |
+| `text-body` | 15 / 21 | 400 | Phrases, contenu |
+| `text-body-strong` | 15 / 21 | 600 | Le nom ou le chiffre dans une phrase |
+| `text-footnote` | 13 / 18 | 400 | Le détail sous une phrase : qui, quand, combien (`text-muted`) |
+| `text-caption` | 12 / 16 | 500 | Étiquettes, pastilles, raccourcis |
 
-Chiffres tabulaires (`font-variant-numeric: tabular-nums`) pour tout montant ou durée. Interdits : majuscules forcées, italique, plus de 3 tailles par écran.
+Interlettrage légèrement resserré sur les grandes tailles (−0,022 em au titre). Chiffres tabulaires pour tout montant ou durée. Interdits : majuscules forcées, italique.
 
 ### 2.3 Formes
 
 | Token | Valeur | Usage |
 |---|---|---|
-| `radius` | 12 px | Documents, champs |
-| `radius-tile` | 24 px | Tuiles |
-| `radius-panel` | 32 px | Dialogues, grands panneaux |
-| `radius-full` | 999 px | Boutons (pilules), pastilles, rail, avatars |
+| `radius` | 10 px | Champs, lignes choisies, documents |
+| `radius-tile` | 18 px | Cartes |
+| `radius-panel` | 24 px | Barre latérale ; dialogues à 22 px |
+| `radius-full` | 999 px | Boutons, pastilles |
+| symbole | 26 % du côté | Pastille arrondie d'un agent ou d'un département (24, 34, 44 ou 64 px) |
 
-### 2.4 Matière verre et fond
+### 2.4 Matières et fond
 
 | Token | Clair | Sombre | Usage |
 |---|---|---|---|
-| `glass-bg` | blanc 58 % | `#1E1F26` 55 % | Tuile standard |
-| `glass-strong` | blanc 80 % | `#26272E` 78 % | Tuile mise en avant, document, contrôle actif |
-| `glass-edge` | blanc 75 % | blanc 10 % | Reflet intérieur d'1 px qui dessine le bord du verre |
-| `glass-blur` | `blur(28px) saturate(170%)` | idem | Dépoli |
-| `backdrop-*` | `#E8ECF4` + rose, lavande, menthe | `#0D0F15` + teintes profondes | Le fond, autour de la couleur d'accent |
+| `glass-strong` | `#FFFFFF` | `#1C1C1E` | Les cartes et les dialogues : pleins, pour un contraste qui ne dépend de rien |
+| `glass-sidebar` | `#FAFAFC` 72 % | `#242426` 70 % | La barre latérale, translucide et floutée (`blur(40px) saturate(180%)`) |
+| `glass-shadow` | ombre en trois couches très douces | plus dense | Pose la carte sur le fond, sans bord |
+| `separator` | gris 13 % | gris 55 % | Le filet entre deux lignes d'une carte |
+| `fill`, `fill-strong` | gris 12 % / 20 % | gris 24 % / 36 % | Boutons secondaires, champ de recherche, piste du contrôle segmenté |
+| `backdrop-base` | `#F2F2F5` | `#000000` | Le fond, éclairé en haut par 7 % d'accent |
 
-- **Une tuile = un sujet.** Ce qui est mis en avant (le travail en direct, la proposition de Nova) passe en `glass-strong`.
-- **Le fond est le même partout** : fond d'écran du bureau, fond de Nova Home, et le flou du dock et de la barre du haut (Blur my Shell).
-- **Le contraste ne dépend pas du fond** : l'opacité minimale du verre garantit l'AA pour `text` et `text-muted`, vérifié automatiquement (axe-core, clair et sombre).
-- Le texte posé directement sur le fond (salut, résumé) est en pleine couleur `text`.
+- **Une carte = un sujet.** Dans une carte : des lignes, un filet entre elles, jamais une deuxième carte. Une sous-carte cliquable (modèle, connecteur) n'a qu'un contour d'un filet.
+- **Le fond est le même partout** : fond d'écran du bureau et fond de Nova Home.
 
 ### 2.5 Couleur
 
@@ -73,16 +78,17 @@ Neutres fixes, **une seule couleur d'accent par entreprise** (`nova.brand.accent
 
 | Token | Clair | Sombre |
 |---|---|---|
-| `bg` | `#FFFFFF` | `#111113` |
-| `surface` | `#F5F5F7` | `#1C1C1F` |
+| `bg` | `#FFFFFF` | `#1C1C1E` |
+| `surface` | `#F5F5F7` | `#000000` |
 | `text` | `#1D1D1F` | `#F5F5F7` |
-| `text-muted` | `#5E5E63` | `#B4B4BA` |
+| `text-muted` | `#6E6E73` | `#98989F` |
 | `accent` | défini par l'entreprise | variante éclaircie calculée |
-| `positive` | `#1A7F37` | `#3FB950` |
-| `attention` | `#B35900` | `#F0883E` |
-| `critical` | `#C62828` | `#FF6B6B` |
+| `positive` | `#1A7F37` | `#30D158` |
+| `attention` | `#B35900` | `#FF9F0A` |
+| `critical` | `#D70015` | `#FF6961` |
+| `badge` | `#D70015` | `#D70015` |
 
-- **L'accent sert à une seule chose : l'action principale.** Jamais pour décorer.
+- **L'accent sert à agir et à situer** : le bouton principal, le bouton texte, l'endroit où l'on est dans la barre latérale. Un texte coloré mélange l'accent à la couleur du texte (84 % en clair, 58 % en sombre) pour garder l'AA, quelle que soit la couleur du département.
 - Les couleurs d'état sont toujours doublées d'un mot (« en retard », « validé »), jamais seules.
 - **Garde-fou au build** : si l'accent choisi n'atteint pas un contraste de 4,5:1 sur `bg` (clair et sombre), la construction de la machine échoue avec un message clair et une proposition de teinte corrigée.
 
@@ -90,16 +96,17 @@ Neutres fixes, **une seule couleur d'accent par entreprise** (`nova.brand.accent
 
 | Token | Valeur | Usage |
 |---|---|---|
-| `motion-fast` | 120 ms | Survol, focus, appui |
-| `motion-base` | 200 ms (maximum absolu) | Apparition, disparition, changement d'état |
-| `ease` | `cubic-bezier(.2, 0, 0, 1)` | Toutes les transitions |
+| `motion-fast` | 140 ms | Survol, appui |
+| `motion-base` | 320 ms | Apparition d'une feuille, d'une ligne, changement d'état |
+| `ease` | `cubic-bezier(.32, .72, 0, 1)` | La courbe des feuilles d'iOS : part vite, se pose sans rebond |
 
-Une animation explique un changement d'état, sinon elle n'existe pas. `prefers-reduced-motion` → 0 ms.
+Un bouton s'enfonce à 96 % quand on appuie. Un dialogue monte de 12 px en grandissant de 97 % à 100 %. Une animation explique un changement d'état, sinon elle n'existe pas. `prefers-reduced-motion` → 0 ms.
 
 ### 2.7 Focus et clavier
 
-- Anneau de focus : 2 px `accent`, décalé de 2 px, toujours visible au clavier.
-- Toute action a un raccourci : `Entrée` valide, `Échap` ferme, `J`/`K` naviguent dans une liste, `/` ouvre la recherche en langage naturel.
+- Anneau de focus : 3 px d'accent à 55 %, décalé d'1 px, toujours visible au clavier.
+- `⌘K` ouvre la palette, `/` ouvre Demander, `Entrée` valide, `Échap` ferme.
+- Une action de ligne (« Envoyer à… ») n'apparaît qu'au survol avec une souris ; au clavier et au doigt, elle est toujours là.
 - Ordre de tabulation = ordre de lecture. Aucun piège à focus hors dialogue.
 
 ## 3. Composants
@@ -110,20 +117,20 @@ Quinze composants pour le MVP : quatre pour le cadre, onze pour les contenus. Un
 |---|---|---|
 | **Barre du haut** | Nom de l'entreprise, champ `/`, compteur de validations, état du poste | — |
 | **Dock** | La boîte : Entreprise · apps · agents, groupes séparés par l'espace ; verre flouté | — |
-| **Rail** | Dans Nova Home : pilule de verre verticale (horizontale sur mobile), Entreprise puis un monogramme par agent avec sa pastille | — |
-| **Pastille d'agent** | État d'un agent sur son icône : point (actif), creux (en pause), chiffre (validations en attente) | positive, muted, accent |
+| **Barre latérale** | Dans Nova Home, comme une app du Mac : le nom de l'entreprise, « Aller à… ⌘K », Accueil et Demander, les départements (symbole, nom, compte de ce qui attend, point vert quand un agent travaille), puis Atelier et Réglages. Sur mobile, une barre d'onglets flottante | — |
+| **Symbole** | Un agent ou un département : son symbole (jeu dessiné maison, trait de 1,7) en blanc sur une pastille arrondie de sa couleur ; anneau qui respire quand il travaille, pastille rouge chiffrée (validations en attente), cercle creux en pause | plein, doux (modèle) |
 | **Phrase** | Une information = une phrase humaine, avec un élément en `text-body-strong` | normale, état (positive/attention/critical) |
-| **Tuile** | Un sujet dans une tuile de verre, titre en `text-body-strong` | `glass-bg`, `glass-strong` |
-| **Bouton** | Une action, en pilule | `principal` (accent, une par tuile), `secondaire` (verre), `discret` (texte) |
+| **Carte** | Un sujet dans une carte pleine, titre en `text-headline`, contenu en lignes séparées par un filet | — |
+| **Bouton** | Une action, en pilule de 32 px | `principal` (accent, un par carte), `secondaire` (gris), `discret` (texte à l'accent : « Pourquoi ? », « Voir »), icône |
 | **Validation** | Demande d'approbation : phrase + aperçu + `Valider` / `Refuser` | — |
 | **Chiffre** | Montant ou durée mis en avant, avec sa phrase de contexte | — |
 | **Champ** | Saisie, dont la recherche en langage naturel | — |
 | **Fil en direct** | Les étapes d'un agent qui apparaissent une à une, en phrases, à côté du document en cours | en cours, terminé, rejoué |
-| **Autonomie** | Le choix du niveau d'un agent en trois positions (*Je valide tout* · *l'important* · *Autonome*), avec la phrase qui explique ce qui change | — |
+| **Autonomie** | Le choix du niveau d'un agent en trois positions (*Je valide tout* · *l'important* · *Autonome*), avec la phrase qui explique ce qui change. Contrôle segmenté quand il y a la place, liste à coche sinon | — |
 | **Annulation** | Compte à rebours d'un envoi : « Envoi dans 1:42 · Annuler » | — |
-| **Dialogue** | Confirmation ou détail, en verre, sur un fond légèrement flouté | — |
+| **Dialogue** | Une feuille pleine qui se pose sur un voile sombre à 28 % | normal, large |
 
-Exclus volontairement : onglets, tableaux de données, graphiques décoratifs, badges de compteur, menus hamburger, toasts.
+Exclus volontairement : onglets, tableaux de données, graphiques décoratifs, menus hamburger, toasts. Un compte ne s'affiche que pour ce qui attend la personne.
 
 ## 4. Écriture
 

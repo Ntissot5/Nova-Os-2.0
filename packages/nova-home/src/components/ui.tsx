@@ -2,9 +2,10 @@
 // en composant ceux-ci.
 
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import type { AgentState, Autonomy, Task, Why } from "../../../nova-server/src/core/types";
+import type { AgentState, Autonomy, State, Task, Why } from "../../../nova-server/src/core/types";
 import { act } from "../api";
 import { countdown } from "../format";
+import { couleurs, iconePour, Symbole } from "./Icones";
 
 /** Une tuile de verre avec son titre. */
 export function Bloc({
@@ -50,8 +51,10 @@ export function Button({
   href,
   label,
   disabled,
+  className,
 }: {
   variant?: Variant;
+  className?: string;
   onClick?: () => unknown;
   children: ReactNode;
   href?: string;
@@ -59,7 +62,7 @@ export function Button({
   disabled?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
-  const cls = `btn btn-${variant}`;
+  const cls = `btn btn-${variant}${className ? ` ${className}` : ""}`;
   if (href)
     return (
       <a className={cls} href={href} aria-label={label}>
@@ -98,17 +101,18 @@ export function Chiffre({ value, children }: { value: string; children: ReactNod
   );
 }
 
-/** Monogramme d'agent, avec pastille : nombre de validations en attente, ou cercle creux en pause. */
-export function Monogram({ agent, large }: { agent: AgentState; large?: boolean }) {
-  const working = agent.status === "travaille";
+/** Le symbole d'un agent, avec sa pastille : nombre de validations en attente, ou cercle creux en pause. */
+export function Monogram({ agent, large, couleur }: { agent: AgentState; large?: boolean; couleur?: string }) {
   return (
-    <span className={`mono${large ? " mono-lg" : ""}${working ? " is-working" : ""}`} aria-hidden="true">
-      {agent.name.slice(0, 1)}
+    <Symbole nom={iconePour(agent.name, agent.description)} taille={large ? "xl" : "m"} actif={agent.status === "travaille"} style={couleur ? couleurs(couleur) : undefined}>
       {agent.pending > 0 && <span className="pastille">{agent.pending}</span>}
       {agent.status === "pause" && agent.pending === 0 && <span className="pastille pastille-pause" />}
-    </span>
+    </Symbole>
   );
 }
+
+/** La couleur du département d'un agent, s'il en a un. */
+export const couleurAgent = (state: State, agentId: string) => state.departements?.find((d) => d.agents.includes(agentId))?.couleur;
 
 export const AUTONOMY_LABEL: Record<Autonomy, string> = {
   "je-valide-tout": "Je valide tout",

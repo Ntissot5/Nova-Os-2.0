@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Autonomy } from "../../../nova-server/src/core/types";
 import { act } from "../api";
-import { couleurs, Pastille } from "../components/Envoyer";
+import { couleurs, Icone, iconePour, Symbole } from "../components/Icones";
 import { Page } from "../components/Shell";
 import { AUTONOMY_LABEL, Bloc, Button, Phrase, useDialogue } from "../components/ui";
 
@@ -93,9 +93,7 @@ export function AtelierScreen() {
                   <li key={a.id}>
                     <button type="button" className="tile carte" onClick={() => setEdition(a)} style={nomDep(a.departement) ? couleurs(nomDep(a.departement)!.couleur) : undefined}>
                       <span className="carte-tete">
-                        <span className="mono" aria-hidden="true">
-                          {a.name.slice(0, 1)}
-                        </span>
+                        <Symbole nom={iconePour(a.name, a.description)} />
                         <span className="caption">{nomDep(a.departement)?.name ?? "Sans département"}</span>
                       </span>
                       <strong>{a.name}</strong>
@@ -110,9 +108,7 @@ export function AtelierScreen() {
                   <li key={a.id}>
                     <div className="tile carte carte-base" style={nomDep(a.departement) ? couleurs(nomDep(a.departement)!.couleur) : undefined}>
                       <span className="carte-tete">
-                        <span className="mono" aria-hidden="true">
-                          {a.name.slice(0, 1)}
-                        </span>
+                        <Symbole nom={iconePour(a.name, a.description)} />
                         <span className="caption">{nomDep(a.departement)?.name ?? "Sans département"}</span>
                       </span>
                       <strong>{a.name}</strong>
@@ -123,8 +119,10 @@ export function AtelierScreen() {
                 ))}
                 <li>
                   <button type="button" className="tile carte carte-nouveau" onClick={() => setEdition({ declencheur: "mail", sources: {}, autonomy: "je-valide-tout", minutes: 10 })}>
-                    <span className="carte-plus" aria-hidden="true">
-                      +
+                    <span className="carte-tete">
+                      <span className="carte-plus" aria-hidden="true">
+                        <Icone nom="plus" taille={18} />
+                      </span>
                     </span>
                     <strong>Nouvel agent</strong>
                     <span className="caption">Décris son travail en quelques phrases.</span>
@@ -143,7 +141,10 @@ export function AtelierScreen() {
                       className="tile carte"
                       onClick={() => setEdition({ name: m.nom, consignes: m.consignes, declencheur: m.declencheur, sources: m.sources, minutes: m.minutes, autonomy: "je-valide-tout" })}
                     >
-                      <span className="caption">{m.metier}</span>
+                      <span className="carte-tete">
+                        <Symbole nom={iconePour(m.nom, m.description)} doux />
+                        <span className="caption">{m.metier}</span>
+                      </span>
                       <strong>{m.nom}</strong>
                       <span className="caption">{m.description}</span>
                       <span className="caption">{quand(m.declencheur)}</span>
@@ -159,8 +160,8 @@ export function AtelierScreen() {
               <ul className="list">
                 {v.departements.map((d) => (
                   <li key={d.id} className="actions" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
-                    <span className="actions" style={{ flexWrap: "nowrap", gap: "var(--space-1)" }}>
-                      <Pastille d={d} size={14} />
+                    <span className="actions" style={{ flexWrap: "nowrap", gap: "12px" }}>
+                      <Symbole nom={iconePour(d.name)} taille="s" style={couleurs(d.couleur)} />
                       <Phrase
                         meta={`${d.membres.map((m) => v.personnes.find((p) => p.id === m)?.name ?? m).join(", ") || "Personne"} · ${d.agents.length} agent${d.agents.length > 1 ? "s" : ""}${d.atelier ? "" : " · installation"}`}
                       >

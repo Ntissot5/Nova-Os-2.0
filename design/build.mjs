@@ -13,8 +13,8 @@ function css() {
   const lines = [];
   for (const [k, t] of Object.entries(tokens.space)) lines.push(`--space-${k}:${v(t)}`);
   lines.push(`--measure:${v(tokens.measure)}`);
-  lines.push(`--font-family:${v(tokens.font.family)}`);
-  for (const name of ["display", "title", "body", "body-strong", "caption"]) {
+  lines.push(`--font-family:${v(tokens.font.family)}`, `--font-rounded:${v(tokens.font.rounded)}`);
+  for (const name of ["display", "title", "headline", "body", "body-strong", "footnote", "caption"]) {
     const f = tokens.font[name];
     lines.push(`--text-${name}:${v(f.weight)} ${v(f.size)}/${v(f.line)} var(--font-family)`);
   }

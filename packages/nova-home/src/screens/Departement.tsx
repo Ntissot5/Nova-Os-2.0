@@ -4,7 +4,8 @@
 import { useState } from "react";
 import type { Relais, State, Task } from "../../../nova-server/src/core/types";
 import { act } from "../api";
-import { couleurs, Envoyer } from "../components/Envoyer";
+import { Envoyer } from "../components/Envoyer";
+import { couleurs, Icone, iconePour, Symbole } from "../components/Icones";
 import { Page } from "../components/Shell";
 import { Bloc, Button, Phrase, Undo } from "../components/ui";
 import { plural, relative } from "../format";
@@ -33,24 +34,20 @@ export function Departement({ state, id, now }: { state: State; id: string; now:
   return (
     <Page>
       <header className="topline">
+        <div className="actions" style={{ gap: "16px", flexWrap: "nowrap", minWidth: 0 }}>
+        <Symbole nom={iconePour(d.name)} taille="xl" style={couleurs(d.couleur)} />
         <div className="hero-text">
-          <p className="caption eyebrow">
+          <p className="eyebrow">
             Département{d.membres.length ? ` · ${d.membres.map((m) => m.name).join(", ")}` : ""}
           </p>
-          <h1 className="display" style={couleurs(d.couleur)}>
-            {d.name}
-          </h1>
+          <h1 className="display">{d.name}</h1>
           <p className="muted">
             {agents.length ? plural(agents.length, "agent", "agents") : "Aucun agent pour l'instant"}
             {attente.length ? ` · ${plural(attente.length, "action attend", "actions attendent")} une validation` : ""}
           </p>
         </div>
+        </div>
         <div className="actions">
-          {recus.length > 0 && (
-            <a className="pill pill-accent" href="#recu-titre">
-              Reçu des autres départements · {recus.length}
-            </a>
-          )}
           <Button variant="secondaire" onClick={() => setEnvoi({})}>
             Envoyer à…
           </Button>
@@ -72,8 +69,8 @@ export function Departement({ state, id, now }: { state: State; id: string; now:
                 {fait.map((t) => (
                   <li key={t.id} className="actions" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
                     <Phrase meta={`${nom.get(t.agentId) ?? t.agentId} · ${relative(t.endedAt ?? t.startedAt, now)}`}>{t.outcome}</Phrase>
-                    <Button variant="discret" label={`Envoyer « ${t.outcome ?? t.title} » à un autre département`} onClick={() => setEnvoi({ titre: t.title, tache: t.id })}>
-                      Envoyer à…
+                    <Button variant="discret" className="btn-icone ligne-action" label={`Envoyer « ${t.outcome ?? t.title} » à un autre département`} onClick={() => setEnvoi({ titre: t.title, tache: t.id })}>
+                      <Icone nom="avion" taille={18} />
                     </Button>
                   </li>
                 ))}
