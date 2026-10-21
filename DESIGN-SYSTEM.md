@@ -10,6 +10,7 @@
 4. **Le texte est l'interface.** Des phrases complètes et humaines plutôt que des tableaux bruts.
 5. **Zéro paramètre exposé.** Tout se décide dans `company.nix`. L'utilisateur final ne règle rien.
 6. **Accessible d'abord.** Contraste AA minimum, clavier complet, lecteur d'écran, mouvement réduit respecté.
+7. **Rien d'invisible.** Tout ce qu'un agent fait se voit, en direct, en phrases ; chaque action répond à « Pourquoi ? ».
 
 ## 2. Tokens
 
@@ -86,7 +87,7 @@ Une animation explique un changement d'état, sinon elle n'existe pas. `prefers-
 
 ## 3. Composants
 
-Dix composants pour le MVP : trois pour le bureau, sept pour les contenus. Un besoin non couvert se résout d'abord en composant ceux-là.
+Treize composants pour le MVP : trois pour le bureau, dix pour les contenus. Un besoin non couvert se résout d'abord en composant ceux-là.
 
 | Composant | Rôle | Variantes |
 |---|---|---|
@@ -99,6 +100,9 @@ Dix composants pour le MVP : trois pour le bureau, sept pour les contenus. Un be
 | **Validation** | Demande d'approbation : phrase + aperçu + `Valider` / `Refuser` | — |
 | **Chiffre** | Montant ou durée mis en avant, avec sa phrase de contexte | — |
 | **Champ** | Saisie, dont la recherche en langage naturel | — |
+| **Fil en direct** | Les étapes d'un agent qui apparaissent une à une, en phrases, à côté du document en cours | en cours, terminé, rejoué |
+| **Autonomie** | Le choix du niveau d'un agent en trois positions (*Je valide tout* · *l'important* · *Autonome*), avec la phrase qui explique ce qui change | — |
+| **Annulation** | Compte à rebours d'un envoi : « Envoi dans 1:42 · Annuler » | — |
 | **Dialogue** | Confirmation ou détail ; seul composant avec `shadow-2` | — |
 
 Exclus volontairement : onglets, tableaux de données, graphiques décoratifs, badges de compteur, menus hamburger, toasts.
@@ -120,16 +124,19 @@ Ce qui s'est passé                                            ← text-title
   12 demandes de locataires triées, 2 transmises au concierge.
   Les loyers d'octobre sont rapprochés : 3 retards.
 
+En ce moment                                                  ← text-title
+  Locataires lit le mail de Mme Rossi (fuite, 3e étage)…      ← Fil en direct
+  [ Regarder ]
+
 En attente de toi                                             ← text-title
   Relance prête pour 3 locataires (4'860 CHF au total).
   [ Valider ]  [ Voir ]                                       ← Validation
 
-Ce que ça a coûté                                             ← text-title
-  38.20 CHF ce mois-ci, dont 21.40 CHF pour les relances.
-  Environ 6 h de travail administratif évitées.
+Ce que ça t'a fait gagner                                     ← text-title
+  6 h de travail administratif cette semaine.
 ```
 
-Trois blocs, aucune bordure, une seule couleur d'accent (le bouton « Valider »).
+Quatre blocs, aucune bordure, une seule couleur d'accent (le bouton « Valider »).
 
 ## 6. Mise en œuvre
 

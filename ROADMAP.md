@@ -1,4 +1,4 @@
-# Roadmap — Nova OS (MVP, 10 semaines)
+# Roadmap — Nova OS (MVP, 12 semaines)
 
 > Chaque phase se termine par une **démonstration réelle** (pas une maquette) et une **métrique chiffrée** mesurée par un script du dépôt, pas à l'œil.
 
@@ -6,7 +6,7 @@
 |---|---|---|---|
 | 0 — Fondations | 2 sem. | Une VM vierge démarre sur le bureau Nova : barre du haut, dock de la boîte, espace Entreprise | VM neuve → poste prêt en **< 15 min**, **3 fois de suite** |
 | 1 — Bus d'API | 3 sem. | Une question en français traverse mail, agenda et compta | **5/5** connecteurs avec test de contrat vert ; réponse **< 10 s** sur 3 sources |
-| 2 — Agents & espace Entreprise | 3 sem. | La gérance pilote valide ses relances depuis le dock et l'espace Entreprise | **Heures admin économisées/semaine** (avant/après, 30 jours) ; **coût API par poste et par mois** |
+| 2 — Agents visibles & autonomie | 4 sem. | Le dirigeant pilote regarde ses agents travailler en direct, valide ou les laisse faire seuls | **Heures admin économisées/semaine** (avant/après, 30 jours) ; **coût API par poste et par mois** |
 | 3 — Export & flotte | 2 sem. | La boîte entière déménage sur une machine vierge | Export → import, **0 perte**, **< 30 min** ; **3 postes** gérés depuis l'espace Entreprise |
 
 ---
@@ -35,17 +35,19 @@
 
 **Mesure :** `scripts/bench-question` — 20 questions types multi-sources, temps médian et p95. Cible : p95 < 10 s.
 
-## Phase 2 — Agents & espace Entreprise (semaines 6–8)
+## Phase 2 — Agents visibles & autonomie (semaines 6–9)
 
 - Vertical **gérance** : agent **tri des demandes locataires** (qualification, urgence, routage) et agent **relances de loyers** (validation humaine obligatoire).
-- Espace Entreprise branché sur les vraies données : ce qui s'est passé · en attente · ce que ça a coûté ; pastilles d'état des agents dans le dock ; pause/reprise d'un agent.
-- Budgets par agent, suspension automatique à 100 %.
+- **Voir les agents travailler** : fil en direct, document en cours, apps qui s'allument dans le dock, « Pourquoi ? », rejouer une tâche, reprendre la main.
+- **Autonomie au choix** : trois niveaux par agent, délai d'annulation de 2 min, corbeille, plafond de paiement, proposition de monter d'un niveau quand la confiance est acquise.
+- Espace Entreprise branché sur les vraies données : ce qui s'est passé · en ce moment · en attente · ce que ça a fait gagner ; pause/reprise d'un agent.
+- Suivi interne du coût par poste, choix automatique du modèle selon la tâche.
 - Scénario de bout en bout rejouable par agent.
 
 **Mesure :** 2 semaines de relevé du temps administratif **avant** déploiement chez le pilote, puis 30 jours **après** (même grille, saisie hebdomadaire de 2 minutes). Coût API lu dans le journal.
 **Seuil de réussite proposé :** ≥ 4 h économisées par semaine pour un coût < 60 CHF par poste et par mois.
 
-## Phase 3 — Export & flotte (semaines 9–10)
+## Phase 3 — Export & flotte (semaines 10–11)
 
 - `EXPORT-SPEC.md` v1 (format `data/`, versionné, rétrocompatible).
 - `nova export` / `nova import`, vérification par empreintes (chaque fichier, chaque table).
@@ -56,5 +58,7 @@
 ---
 
 ## Après le MVP (non engagé)
+
+Semaine 12 : marge pour les imprévus et la mise en route chez le pilote.
 
 Onboarding d'un employé en 10 min par clé USB ou lien · verticaux fiduciaire, agence, cabinet · VM Windows encapsulée · mémoire d'entreprise enrichie par les agents.

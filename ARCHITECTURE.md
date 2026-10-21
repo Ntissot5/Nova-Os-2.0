@@ -52,8 +52,9 @@ Règle : une couche ne parle qu'à la couche directement voisine, via une interf
 - **`nova-gateway`** est le seul point d'entrée du bus. Il :
   1. authentifie l'appelant (agent ou humain, jeton OIDC Authentik) ;
   2. applique les **permissions** déclarées dans `company.nix` (quel agent a accès à quels outils de quels connecteurs) ;
-  3. **intercepte toute action irréversible** : un outil marqué `destructiveHint` (annotation MCP standard) ou listé comme irréversible (envoi, paiement, suppression) n'est pas exécuté ; il devient une **demande de validation** dans l'espace Entreprise ;
-  4. **journalise** chaque appel (§6).
+  3. **applique le niveau d'autonomie choisi par le dirigeant** (§3.5) : selon ce niveau, une action sensible (envoi, paiement, suppression, repérée par l'annotation MCP `destructiveHint` ou listée dans Nova) part avec un délai d'annulation, ou devient une **demande de validation** dans l'espace Entreprise ;
+  4. **diffuse en direct** chaque étape de chaque agent vers les postes autorisés (§3.6) ;
+  5. **journalise** chaque appel (§6).
 - Ajouter un logiciel = ajouter un serveur MCP et une ligne dans `company.nix`. Jamais d'intégration sur mesure dans le shell ou dans un agent.
 - Transport : MCP « Streamable HTTP » sur socket Unix locale au Hub, exposé aux postes via le gateway en HTTPS + OIDC.
 
@@ -68,13 +69,12 @@ nova.agents.relances-loyers = {
   skills      = [ "gerance/relances" ];
   connectors  = { compta = [ "read" ]; mail = [ "draft" "send" ]; };
   schedule    = "Mon..Fri 08:00";
-  budget      = { monthlyCHF = 40; };
-  approval    = "irreversible";   # défaut, non négociable en dessous
+  autonomy    = "je-valide-tout"; # défaut ; le dirigeant peut le changer depuis l'espace Entreprise (§3.5)
 };
 ```
 
 - Chaque agent tourne dans son propre service systemd, avec son propre utilisateur, et ne voit le monde **que** via `nova-gateway`. Pas d'accès direct au disque ni au réseau.
-- **Budget** : le gateway compte les jetons de chaque appel modèle ; au-delà de 100 % du budget mensuel, l'agent est suspendu et le dirigeant prévenu.
+- **Usage illimité pour le client, coût maîtrisé pour Nova** (D-016) : le client paie un forfait par poste, sans compteur. Le gateway compte les jetons de chaque appel et choisit le modèle adapté à chaque tâche (petit modèle pour trier, grand modèle pour rédiger ou raisonner), avec cache de prompts. Le coût réel par poste est suivi par l'opérateur Nova ; un usage anormal déclenche une alerte, jamais un blocage silencieux.
 - **Skills métier** : dossiers Markdown versionnés (`verticals/<métier>/skills/`). Un vertical = des skills + une liste de connecteurs.
 - **Mémoire d'entreprise** : `data/memory/` (Markdown : vocabulaire, contacts, règles). Lecture par tous les agents autorisés ; écriture uniquement via un outil MCP `memory.propose`, validée par un humain.
 - **Scénarios rejouables** : chaque agent a un scénario de bout en bout (entrées enregistrées → sorties attendues) exécuté en CI contre des connecteurs simulés.
@@ -101,10 +101,10 @@ nova.agents.relances-loyers = {
   2. **Les apps de la boîte** : mail, agenda, fichiers, logiciel de compta, logiciel métier. Natives Linux, web (en fenêtre d'app) ou Windows encapsulées : pour l'employé, elles se comportent toutes de la même façon.
   3. **Les agents** : un par métier (Compta, Locataires, Relances…), avec une pastille d'état : actif, en pause, ou nombre d'actions en attente de validation.
 - **L'espace Entreprise** (plein écran, comme Mission Control sur Mac) : **toute la boîte en une vision**.
-  - *Ce qui s'est passé* · *ce qui attend une validation* · *ce que ça a coûté*.
-  - **Agents** : pour chacun, ce qu'il fait, ses dernières actions, son budget du mois, et les commandes `Mettre en pause` / `Reprendre`.
+  - *Ce qui s'est passé* · *ce qui se passe en ce moment* · *ce qui attend une validation* · *ce que ça a fait gagner*.
+  - **Agents** : pour chacun, ce qu'il fait en ce moment, ses dernières actions, son niveau d'autonomie, et les commandes `Mettre en pause` / `Reprendre`.
   - **Flotte** (dirigeant, Phase 3) : postes, versions, mise à jour, rollback, révocation.
-- **Chaque agent a sa page** (clic dans le dock) : son activité en phrases, ses validations en attente, les règles qu'il suit (tirées de `data/memory/`), son coût.
+- **Chaque agent a sa page** (clic dans le dock) : on le **regarde travailler en direct** (§3.6), ses validations en attente, les règles qu'il suit (tirées de `data/memory/`), son niveau d'autonomie.
 - **Barre du haut** : nom de l'entreprise, recherche et questions en langage naturel (`/`), compteur de validations, état du poste. Rien d'autre.
 - **Ce que chacun voit dépend de son rôle** (dans `company.nix`) : un employé voit ses apps et ses agents ; le dirigeant voit tout et contrôle tout.
 - **Tout est contrôlable, rien n'est réglable** : on peut mettre un agent en pause, valider, refuser, révoquer, revenir en arrière ; on ne règle aucun paramètre technique.
@@ -116,6 +116,37 @@ nova.agents.relances-loyers = {
 - **`nova-daemon`** : l'API locale du poste, seule source de données du shell et de `nova-home`. Parle au Hub via le gateway. Aucune logique métier dans l'interface.
 - **Logiciels Windows-only** : encapsulés, jamais émulés globalement. Version web si elle existe, sinon une VM Windows isolée (libvirt) dont la seule fenêtre apparaît dans le dock comme une app normale.
 - **Bureautique** : la suite de la boîte (Microsoft 365 web, OnlyOffice ou LibreOffice) est fixée dans `company.nix`.
+
+### 3.5 Autonomie choisie par le dirigeant (D-014)
+
+C'est le dirigeant qui décide, agent par agent et type d'action par type d'action, ce qui part seul et ce qui attend sa validation. Trois niveaux, réglés d'un clic dans l'espace Entreprise :
+
+| Niveau | Ce qui se passe | Pour qui |
+|---|---|---|
+| **Je valide tout** (défaut) | Chaque action sensible attend une validation. | Les premiers jours, ou les actions à fort enjeu |
+| **Je valide l'important** | Les actions sous les seuils (montant, nombre de destinataires, destinataire connu) partent seules ; les autres attendent. | Le régime normal |
+| **Autonome** | Tout part seul ; un résumé arrive chaque soir. | Les tâches routinières, une fois la confiance acquise |
+
+**Garde-fous toujours actifs, quel que soit le niveau :**
+- **Délai d'annulation** : tout envoi part après 2 minutes, annulable d'un clic (« Envoi dans 1:42 · Annuler »).
+- **Rien n'est vraiment effacé** : une suppression va dans une corbeille de 30 jours.
+- **Plafond de paiement** : au-dessus du montant fixé par le dirigeant, un paiement est toujours validé par un humain.
+- **Tout est journalisé et rejouable** (§3.6, §6).
+
+**La confiance se gagne** : Nova propose de monter d'un niveau quand c'est mérité (« Relances : 40 validations d'affilée sans correction. Passer en *Je valide l'important* ? »). Le dirigeant peut redescendre à tout moment.
+
+### 3.6 Voir les agents travailler (D-015)
+
+Principe : **on ne fait pas confiance à ce qu'on ne voit pas.** Tout ce qu'un agent fait est visible, en direct, en langage humain.
+
+- **Dans le dock** : l'icône d'un agent qui travaille s'anime doucement ; les apps qu'il utilise s'allument à côté de lui (« Relances utilise Compta et Mail »).
+- **Sur la page de l'agent, en direct** : ses étapes apparaissent une à une, en phrases (« Je lis le mail de Mme Rossi… Elle signale une fuite au 3e étage. C'est urgent. Je cherche le concierge de l'immeuble… J'ai préparé un message pour lui. »). À côté, **le document qu'il lit ou le brouillon qu'il écrit**, qui se remplit sous les yeux de l'utilisateur.
+- **Logiciels encapsulés** : quand un agent manipule un logiciel Windows dans sa VM, on voit son écran en direct, comme si on regardait par-dessus son épaule.
+- **« Pourquoi ? » sur chaque action** : un clic montre la règle suivie, les informations utilisées et les sources.
+- **Rejouer** : n'importe quelle tâche passée se rejoue étape par étape, comme une vidéo.
+- **Reprendre la main** : à tout moment, `Arrêter` ou `Je m'en occupe` interrompt l'agent et laisse le travail en l'état.
+
+Mise en œuvre : chaque étape d'agent est un événement émis par le gateway (même format que le journal, §6) et diffusé aux postes autorisés ; l'interface ne fait qu'afficher ce flux. Rien de ce qui est affiché n'existe ailleurs que dans le journal.
 
 ## 4. Les flux principaux
 
@@ -165,7 +196,7 @@ L'espace Entreprise lit ces fichiers ; aucune donnée d'observabilité n'existe 
 | Mises à jour signées | Cache binaire signé ; les postes refusent toute clé inconnue |
 | Identité | Authentik (OIDC/LDAP) sur le Hub ; révocation = un clic |
 | Moindre privilège | Un utilisateur système et une liste d'outils MCP par agent |
-| Irréversible | Validation humaine obligatoire, appliquée par le gateway, pas par l'agent |
+| Actions sensibles | Niveau d'autonomie choisi par le dirigeant, garde-fous permanents (délai d'annulation, corbeille, plafond de paiement), appliqués par le gateway, jamais par l'agent |
 
 ## 8. Organisation du dépôt (cible)
 
