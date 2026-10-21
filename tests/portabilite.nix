@@ -6,6 +6,9 @@ let
     imports = [ self.nixosModules.nova ../companies/${name}/company.nix extra ];
     nova.disk.enable = false;
     nova.poste.enable = false; # Hub seul : pas de bureau dans ce test
+    # Comme les machines de flake.nix : la configuration source part dans l'export.
+    nova.sourceDir = ../companies/${name};
+    nova.flakeLock = ../flake.lock;
     virtualisation.memorySize = 2048;
   };
 in
