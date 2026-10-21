@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,7 +18,8 @@ function company() {
   cpSync(join(root, "companies/demo/data"), join(dir, "data"), { recursive: true });
   writeFileSync(join(dir, "data", ".initialise"), "");
   mkdirSync(join(dir, "source"));
-  cpSync(join(root, "companies/demo/company.nix"), join(dir, "source/company.nix"));
+  // Comme sur une vraie machine : /etc/nova/source/company.nix est un lien vers le store Nix.
+  symlinkSync(join(root, "companies/demo/company.nix"), join(dir, "source/company.nix"));
   return dir;
 }
 const opts = (dir: string, sortie: string) => ({ data: join(dir, "data"), entreprise: join(dir, "source"), flakeLock: join(root, "flake.lock"), nom: "Régie Démo SA", novaVersion: "0.1", sortie, maintenant: NOW });

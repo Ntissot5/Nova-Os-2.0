@@ -93,8 +93,9 @@ export async function exporter(o: ExportOptions) {
     // 1. Une copie figée de data/ : on exporte un état cohérent, même si le Hub continue d'écrire.
     cpSync(o.data, join(root, "data"), { recursive: true, filter: (src) => !IGNORE.has(basename(src)) });
     mkdirSync(join(root, "entreprise"), { recursive: true });
-    if (o.entreprise && existsSync(join(o.entreprise, "company.nix"))) cpSync(join(o.entreprise, "company.nix"), join(root, "entreprise", "company.nix"));
-    if (o.flakeLock && existsSync(o.flakeLock)) cpSync(o.flakeLock, join(root, "entreprise", "flake.lock"));
+    // Sur le Hub, ces deux fichiers sont des liens vers le store Nix : on copie leur contenu (pas le lien, ni les droits en lecture seule du store).
+    if (o.entreprise && existsSync(join(o.entreprise, "company.nix"))) writeFileSync(join(root, "entreprise", "company.nix"), readFileSync(join(o.entreprise, "company.nix")));
+    if (o.flakeLock && existsSync(o.flakeLock)) writeFileSync(join(root, "entreprise", "flake.lock"), readFileSync(o.flakeLock));
 
     // 2. Empreintes et manifeste.
     const fichiers = await entries(root, (rel) => !META.has(rel));
