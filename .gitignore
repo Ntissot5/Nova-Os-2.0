@@ -4,3 +4,5 @@ result-*
 .direnv/
 node_modules/
 .env
+dist/
+test-results/

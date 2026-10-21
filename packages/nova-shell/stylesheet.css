@@ -1,0 +1,9 @@
+.nova-company {
+  font-weight: 600;
+  padding: 0 8px;
+}
+.nova-pending {
+  font-weight: 600;
+  padding: 0 10px;
+  border-radius: 999px;
+}
