@@ -2,6 +2,7 @@
 // Connecteur Agenda. Fournisseur choisi par NOVA_AGENDA_BACKEND :
 //   ics (défaut) : fichiers iCalendar dans data/agenda/ ; démonstration et tests
 //   caldav       : NOVA_AGENDA_URL, NOVA_AGENDA_USER, NOVA_AGENDA_PASSWORD (Infomaniak, Nextcloud, iCloud, Radicale…)
+//   microsoft    : l'agenda Outlook de Microsoft 365, par Graph (connecté depuis l'écran Connecteurs)
 
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -10,6 +11,7 @@ import ICAL from "ical.js";
 import { createDAVClient } from "tsdav";
 import { z } from "zod";
 import { RIGHT, dataDir, guard, norm, ok, serve, server } from "./kit.js";
+import { graph, isoUtc } from "./microsoft.js";
 
 interface Event {
   id: string;
@@ -26,7 +28,8 @@ interface AgendaBackend {
 }
 
 const env = process.env;
-const backend: AgendaBackend = env.NOVA_AGENDA_BACKEND === "caldav" ? caldav() : icsFiles(dataDir("agenda"));
+const backend: AgendaBackend =
+  env.NOVA_AGENDA_BACKEND === "microsoft" ? outlook() : env.NOVA_AGENDA_BACKEND === "caldav" ? caldav() : icsFiles(dataDir("agenda"));
 const s = server("agenda");
 
 s.registerTool(
@@ -149,6 +152,46 @@ function caldav(): AgendaBackend {
       const res = await c.createCalendarObject({ calendar: cal, filename: `${uid}.ics`, iCalString: toIcs(e, uid) });
       if (!res.ok) throw new Error(`Le serveur d'agenda a refusé (${res.status}).`);
       return uid;
+    },
+  };
+}
+
+function outlook(): AgendaBackend {
+  const g = graph();
+  interface E {
+    id: string;
+    subject?: string;
+    start: { dateTime: string };
+    end: { dateTime: string };
+    location?: { displayName?: string };
+    bodyPreview?: string;
+  }
+  return {
+    async events(from, to) {
+      const q = new URLSearchParams({ startDateTime: from.toISOString(), endDateTime: to.toISOString(), $top: "200", $select: "id,subject,start,end,location,bodyPreview" });
+      const r = await g<{ value: E[] }>(`/me/calendarView?${q}`);
+      return r.value.map((e) => ({
+        id: e.id,
+        titre: e.subject ?? "",
+        debut: isoUtc(e.start.dateTime),
+        fin: isoUtc(e.end.dateTime),
+        lieu: e.location?.displayName || undefined,
+        description: e.bodyPreview || undefined,
+      }));
+    },
+    async create(e) {
+      const utc = (s: string) => new Date(s).toISOString().replace(/Z$/, "");
+      const r = await g<{ id: string }>("/me/events", {
+        method: "POST",
+        json: {
+          subject: e.titre,
+          start: { dateTime: utc(e.debut), timeZone: "UTC" },
+          end: { dateTime: utc(e.fin), timeZone: "UTC" },
+          location: e.lieu ? { displayName: e.lieu } : undefined,
+          body: e.description ? { contentType: "Text", content: e.description } : undefined,
+        },
+      });
+      return r.id;
     },
   };
 }
