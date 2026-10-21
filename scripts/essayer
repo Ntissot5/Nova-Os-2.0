@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Essayer Nova sur son ordinateur (Mac ou Linux), sans Nix, avec la régie de démonstration.
+#   scripts/essayer          → trois vues ouvertes en même temps :
+#     http://localhost:7777  Noa, dirigeant (voit tout)
+#     http://localhost:7778  Sophie, Gérance
+#     http://localhost:7779  Léa, Comptabilité
+# Sans clé d'API, les agents jouent des scénarios de démonstration (gratuit).
+# Avec NOVA_IA=1 et ANTHROPIC_API_KEY dans l'environnement, de vrais agents Claude travaillent (payant).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+node -e 'process.exit(Number(process.versions.node.split(".")[0]) < 22 ? 1 : 0)' 2>/dev/null || {
+  echo "Il faut Node.js 22 ou plus récent : https://nodejs.org (ou « brew install node »)."
+  exit 1
+}
+
+# Déjà lancé (par exemple automatiquement par Codespaces) : on le dit au lieu de se battre pour les ports.
+if node -e 'require("net").connect(7777,"127.0.0.1").on("connect",()=>process.exit(0)).on("error",()=>process.exit(1))' 2>/dev/null; then
+  echo "Nova tourne déjà : ouvre http://localhost:7777 (dans Codespaces : onglet Ports, ligne 7777)."
+  exit 0
+fi
+
+etat="${TMPDIR:-/tmp}/nova-essai"
+mkdir -p "$etat"
+
+echo "Préparation (la première fois, une à deux minutes)…"
+[ -d node_modules ] || PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci --no-audit --no-fund >/dev/null
+npm run build >/dev/null
+
+# Instantané de companies/demo/company.nix (la CI vérifie qu'il est à jour) : pas besoin de Nix ici.
+cp companies/demo/company.json "$etat/company.json"
+node design/build.mjs theme "$(node -p 'require("./companies/demo/company.json").brand.accent')" "$etat/theme.css" >/dev/null
+[ -d "$etat/data" ] || cp -R companies/demo/data "$etat/data"
+
+if [ "${NOVA_IA:-0}" = "1" ]; then
+  echo "Agents Claude réels activés : chaque action coûte quelques centimes."
+else
+  unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
+fi
+
+# Dans GitHub Codespaces, le navigateur arrive par une adresse *.app.github.dev (privée, liée au compte GitHub).
+[ "${CODESPACES:-}" = "true" ] && export NOVA_HOTES=".${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}"
+
+pids=()
+NOVA_COMPANY="$etat/company.json" NOVA_DATA="$etat/data" NOVA_DEMO=1 NOVA_SKILLS=verticals \
+  NOVA_SECRETS="$etat/secrets" NOVA_GATEWAY_PORT=7700 node packages/nova-server/dist/gateway/main.js &
+pids+=($!)
+for vue in noa:7777 sophie:7778 lea:7779; do
+  NOVA_PERSON="${vue%%:*}" NOVA_PORT="${vue##*:}" NOVA_GATEWAY=http://127.0.0.1:7700 \
+    NOVA_THEME_CSS="$etat/theme.css" NOVA_HOME_DIR=packages/nova-home/dist node packages/nova-server/dist/daemon/main.js >/dev/null &
+  pids+=($!)
+done
+trap 'kill "${pids[@]}" 2>/dev/null' EXIT INT TERM
+
+sleep 2
+cat <<TXT
+
+Nova tourne. Ouvre dans ton navigateur :
+  http://localhost:7777   Noa, dirigeant : voit tous les départements
+  http://localhost:7778   Sophie : Gérance seulement
+  http://localhost:7779   Léa : Comptabilité seulement
+
+Les données de démonstration sont dans $etat (efface ce dossier pour repartir de zéro).
+Ctrl+C pour arrêter.
+TXT
+wait

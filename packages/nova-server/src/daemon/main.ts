@@ -8,6 +8,8 @@
 //   NOVA_HOME_DIR  interface construite (nova-home/dist)
 //   NOVA_THEME_CSS thème de l'entreprise, généré au build
 //   NOVA_PORT      port d'écoute (7777 par défaut)
+//   NOVA_HOTES     suffixes d'hôtes acceptés en plus de localhost, séparés par des virgules
+//                  (ex. « .app.github.dev » pour un essai dans GitHub Codespaces ; jamais sur un poste)
 
 import { createServer, request, type ServerResponse } from "node:http";
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -22,10 +24,21 @@ const gateway = new URL(env.NOVA_GATEWAY ?? "http://127.0.0.1:7700");
 const person = env.NOVA_PERSON ?? userInfo().username;
 const homeDir = env.NOVA_HOME_DIR ? resolve(env.NOVA_HOME_DIR) : undefined;
 const theme = env.NOVA_THEME_CSS ? readFileSync(env.NOVA_THEME_CSS, "utf8") : "";
+const hotes = (env.NOVA_HOTES ?? "")
+  .split(",")
+  .map((h) => h.trim().toLowerCase())
+  .filter((h) => h.startsWith(".") && h.length > 4);
+
+/** localhost, ou un hôte qui finit par un suffixe déclaré (le point initial évite « evil-app.github.dev »). */
+export function hoteAccepte(host: string) {
+  if (/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host)) return true;
+  const nom = host.toLowerCase().replace(/:\d+$/, "");
+  return hotes.some((h) => nom.endsWith(h));
+}
 
 const server = createServer((req, res) => {
   // Protection contre les sites web qui tenteraient de parler au daemon local.
-  if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(req.headers.host ?? "")) return send(res, 403, { erreur: "Hôte refusé." });
+  if (!hoteAccepte(req.headers.host ?? "")) return send(res, 403, { erreur: "Hôte refusé." });
   const url = new URL(req.url ?? "/", "http://localhost");
   if (url.pathname === "/theme.css") return send(res, 200, theme, "text/css; charset=utf-8");
   if (!url.pathname.startsWith("/api/")) return serveStatic(url.pathname, res);

@@ -102,7 +102,7 @@ try {
   await until("gardien et daemon prêts", async () => (await fetch(`${base}/api/state`).catch(() => null))?.ok);
 
   for (const dark of [false, true])
-    for (const hash of ["#/", "#/agents/locataires", "#/agents/relances", "#/demander", "#/design", "#/connecteurs"])
+    for (const hash of ["#/", "#/agents/locataires", "#/agents/relances", "#/demander", "#/design", "#/connecteurs", "#/departements/gerance"])
       await check(`accessibilité ${hash} (${dark ? "sombre" : "clair"})`, async () => {
         const page = await browser.newPage({ colorScheme: dark ? "dark" : "light" });
         await page.goto(`${base}/${hash}`);
@@ -207,6 +207,49 @@ try {
     await p.getByText("Connecté", { exact: true }).waitFor({ timeout: 15000 });
     await p.getByText(/Outlook · regie@demo\.ch/).first().waitFor();
     await p.close();
+  });
+
+  // Le gardien, interrogé directement au nom d'une personne (comme le ferait son poste).
+  const comme = (person, path, init = {}) =>
+    fetch(`http://127.0.0.1:7798/api/${path}`, { ...init, headers: { "x-nova-person": person, "content-type": "application/json", ...(init.headers ?? {}) } });
+
+  await check("départements : la gérance envoie un dossier à la comptabilité", async () => {
+    const p = await browser.newPage();
+    await p.goto(`${base}/#/departements/gerance`);
+    await p.getByRole("heading", { name: "Gérance", level: 1 }).waitFor();
+    await p.getByRole("button", { name: "Envoyer à…" }).first().click();
+    const d = p.getByRole("dialog");
+    await d.getByRole("radio", { name: "Comptabilité" }).check();
+    await d.getByLabel("Titre").fill("Facture de la fuite d'eau");
+    await d.getByLabel("Message").fill("À payer.");
+    await d.getByRole("button", { name: "Envoyer à Comptabilité" }).click();
+    await until("relais enregistré", async () => (await state()).relais?.some((r) => r.titre === "Facture de la fuite d'eau"));
+    await p.goto(`${base}/#/departements/comptabilite`);
+    await p.getByText("Facture de la fuite d'eau").waitFor();
+    await p.addScriptTag({ content: axe });
+    const r = await p.evaluate(() => axe.run(document, { runOnly: ["wcag2a", "wcag2aa", "wcag21aa"] }));
+    assert.deepEqual(r.violations.map((v) => v.id), []);
+    await p.close();
+  });
+
+  await check("départements : Léa ne voit que la comptabilité, Sophie ne règle pas l'autonomie", async () => {
+    const lea = await (await comme("lea", "state")).json();
+    assert.deepEqual(lea.agents.map((a) => a.id), ["compta"]);
+    assert.ok(lea.tasks.every((t) => t.agentId === "compta"));
+    assert.deepEqual(lea.departements.map((d) => d.id), ["comptabilite"]);
+    assert.ok(lea.annuaire.length >= 4);
+    const relais = lea.relais.find((r) => r.titre === "Facture de la fuite d'eau");
+    assert.ok(relais, "Léa reçoit le dossier de la gérance");
+
+    const gerance = (await state()).tasks.find((t) => ["locataires", "relances"].includes(t.agentId));
+    if (gerance) assert.equal((await comme("lea", `tasks/${gerance.id}/annuler`, { method: "POST" })).status, 403);
+    assert.equal((await comme("lea", "agents/locataires/pause", { method: "POST" })).status, 403);
+    assert.equal((await comme("sophie", "agents/locataires/autonomie", { method: "POST", body: JSON.stringify({ level: "autonome" }) })).status, 403);
+    assert.equal((await comme("sophie", `relais/${relais.id}/traiter`, { method: "POST" })).status, 403);
+    assert.equal((await comme("lea", `relais/${relais.id}/traiter`, { method: "POST" })).status, 200);
+    const outils = await (await comme("lea", "tools")).json();
+    // Demander : les sources dont se servent les agents de son département (compta, mail, fichiers), pas l'agenda ni le téléphone.
+    assert.deepEqual([...new Set(outils.map((o) => o.connector))].sort(), ["compta", "fichiers", "mail"]);
   });
 
   await check("un site extérieur ne peut pas piloter le daemon", async () => {

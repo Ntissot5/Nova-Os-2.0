@@ -15,6 +15,15 @@
     people = {
       noa = { name = "Noa"; role = "dirigeant"; };
       sophie = { name = "Sophie"; role = "employe"; };
+      lea = { name = "Léa"; role = "employe"; };
+    };
+
+    # Un espace par département. Noa dirige : voit tout. Sophie ne voit que la Gérance, Léa que la Comptabilité.
+    departements = {
+      gerance = { name = "Gérance"; couleur = "#0B5FD9"; membres = [ "sophie" ]; agents = [ "locataires" "relances" ]; };
+      comptabilite = { name = "Comptabilité"; couleur = "#1A7F37"; membres = [ "lea" ]; agents = [ "compta" ]; };
+      ppe = { name = "PPE"; couleur = "#6E56CF"; };
+      facility = { name = "Facility"; couleur = "#A65200"; };
     };
 
     apps = [ "mail" "agenda" "fichiers" "navigateur" "bureautique" ];

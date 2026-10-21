@@ -16,6 +16,8 @@ jobs:
         run: nix build .#nova .#nova-shell -L
       - name: Le système de l'entreprise de démo s'évalue
         run: nix eval --raw .#nixosConfigurations.demo.config.system.build.toplevel.drvPath
+      - name: "L'instantané companies/demo/company.json (scripts/essayer) est à jour"
+        run: nix eval --raw .#companyJson.demo | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.stringify(JSON.parse(s),null,2)+"\n"))' | diff - companies/demo/company.json
       - uses: actions/setup-node@v4
         with:
           node-version: 22

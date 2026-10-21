@@ -35,6 +35,19 @@ let
       skills = mkOption { type = types.listOf types.str; default = [ ]; description = "Skills métier chargés par l'agent."; };
     };
   };
+
+  departement = types.submodule {
+    options = {
+      name = mkOption { type = types.str; description = "Nom affiché (« Gérance »)."; };
+      couleur = mkOption {
+        type = types.strMatching "#[0-9A-Fa-f]{6}";
+        default = "#0B5FD9";
+        description = "Couleur du département dans le dock et ses espaces. Vérifiée au build : contraste AA avec du texte blanc.";
+      };
+      membres = mkOption { type = types.listOf types.str; default = [ ]; description = "Les personnes du département (nova.people)."; };
+      agents = mkOption { type = types.listOf types.str; default = [ ]; description = "Les agents du département (nova.agents). Un agent appartient à un seul département."; };
+    };
+  };
 in
 {
   options.nova = {
@@ -90,6 +103,15 @@ in
       };
     };
 
+    departements = mkOption {
+      type = types.attrsOf departement;
+      default = { };
+      description = ''
+        Un espace par département (D-029). Chaque personne ne voit et ne pilote que les agents de ses départements ;
+        le dirigeant voit tout. Sans départements, tout le monde voit tout.
+      '';
+    };
+
     demo = mkOption { type = types.bool; default = false; description = "Joue les scénarios de démonstration (Phase 0)."; };
 
     # Ce que nova-daemon lit : la partie de company.nix utile à l'interface, en JSON.
@@ -101,7 +123,19 @@ in
         inherit (config.nova) version company brand apps limits;
         people = lib.mapAttrs (_: p: { inherit (p) name role; }) config.nova.people;
         agents = lib.mapAttrs (_: a: { inherit (a) name description autonomy connectors skills; }) config.nova.agents;
+        departements = lib.mapAttrs (_: d: { inherit (d) name couleur membres agents; }) config.nova.departements;
       };
     };
   };
+
+  config.assertions =
+    let
+      deps = config.nova.departements;
+      tousAgents = lib.concatMap (d: d.agents) (lib.attrValues deps);
+    in
+    lib.concatLists (lib.mapAttrsToList (id: d:
+      map (m: { assertion = config.nova.people ? ${m}; message = "nova.departements.${id} : « ${m} » n'est pas dans nova.people."; }) d.membres
+      ++ map (a: { assertion = config.nova.agents ? ${a}; message = "nova.departements.${id} : l'agent « ${a} » n'existe pas."; }) d.agents
+    ) deps)
+    ++ map (a: { assertion = lib.count (x: x == a) tousAgents == 1; message = "L'agent « ${a} » appartient à plusieurs départements."; }) (lib.unique tousAgents);
 }

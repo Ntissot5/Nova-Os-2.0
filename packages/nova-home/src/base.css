@@ -897,3 +897,24 @@ details.task[open] > summary {
   box-shadow: inset 0 0 0 1px var(--glass-edge);
   user-select: all;
 }
+
+/* ---------- Départements ---------- */
+
+.deps-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-2);
+}
+.dep-tile {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  padding: var(--space-3);
+  color: var(--text);
+  text-decoration: none;
+}
+.eyebrow {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+}

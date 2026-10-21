@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import type { State } from "../../../nova-server/src/core/types";
 import { useMoi } from "../api";
 import type { Route } from "../route";
+import { couleurs } from "./Envoyer";
 import { Monogram } from "./ui";
 
 export function Backdrop() {
@@ -59,7 +60,26 @@ export function Rail({ state, route }: { state: State | null; route: Route }) {
           </li>
         )}
         <li className="sep" aria-hidden="true" />
-        {state?.agents.map((a) => (
+        {state?.departements?.length
+          ? state.departements.map((d) => {
+              const attente = state.approvals.filter((x) => d.agents.includes(x.agentId)).length;
+              const travaille = state.agents.some((a) => d.agents.includes(a.id) && a.status === "travaille");
+              return (
+                <li key={d.id}>
+                  <a
+                    href={`#/departements/${d.id}`}
+                    aria-current={route.name === "departement" && route.id === d.id ? "page" : undefined}
+                    aria-label={`${d.name}${attente ? `, ${attente} à valider` : ""}`}
+                  >
+                    <span className={`mono${travaille ? " is-working" : ""}`} aria-hidden="true" style={couleurs(d.couleur)}>
+                      {d.name.slice(0, 1)}
+                      {attente > 0 && <span className="pastille">{attente}</span>}
+                    </span>
+                  </a>
+                </li>
+              );
+            })
+          : state?.agents.map((a) => (
           <li key={a.id}>
             <a
               href={`#/agents/${a.id}`}

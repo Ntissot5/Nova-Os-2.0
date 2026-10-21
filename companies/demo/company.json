@@ -1,0 +1,130 @@
+{
+  "agents": {
+    "compta": {
+      "autonomy": "je-valide-l-important",
+      "connectors": {
+        "compta": [
+          "read",
+          "payment"
+        ],
+        "fichiers": [
+          "read"
+        ],
+        "mail": [
+          "read"
+        ]
+      },
+      "description": "Rapproche les paiements et prépare les factures à payer.",
+      "name": "Compta",
+      "skills": [
+        "gerance/comptabilite"
+      ]
+    },
+    "locataires": {
+      "autonomy": "je-valide-l-important",
+      "connectors": {
+        "fichiers": [
+          "read"
+        ],
+        "mail": [
+          "read",
+          "draft",
+          "send"
+        ]
+      },
+      "description": "Lit les demandes des locataires, repère les urgences et prépare les réponses.",
+      "name": "Locataires",
+      "skills": [
+        "gerance/tri-demandes"
+      ]
+    },
+    "relances": {
+      "autonomy": "je-valide-tout",
+      "connectors": {
+        "compta": [
+          "read"
+        ],
+        "fichiers": [
+          "read"
+        ],
+        "mail": [
+          "draft",
+          "send"
+        ]
+      },
+      "description": "Repère les loyers en retard et prépare les rappels.",
+      "name": "Relances",
+      "skills": [
+        "gerance/relances"
+      ]
+    }
+  },
+  "apps": [
+    "mail",
+    "agenda",
+    "fichiers",
+    "navigateur",
+    "bureautique"
+  ],
+  "brand": {
+    "accent": "#0A6CFF"
+  },
+  "company": {
+    "address": "tu",
+    "name": "Régie Démo SA"
+  },
+  "departements": {
+    "comptabilite": {
+      "agents": [
+        "compta"
+      ],
+      "couleur": "#1A7F37",
+      "membres": [
+        "lea"
+      ],
+      "name": "Comptabilité"
+    },
+    "facility": {
+      "agents": [],
+      "couleur": "#A65200",
+      "membres": [],
+      "name": "Facility"
+    },
+    "gerance": {
+      "agents": [
+        "locataires",
+        "relances"
+      ],
+      "couleur": "#0B5FD9",
+      "membres": [
+        "sophie"
+      ],
+      "name": "Gérance"
+    },
+    "ppe": {
+      "agents": [],
+      "couleur": "#6E56CF",
+      "membres": [],
+      "name": "PPE"
+    }
+  },
+  "limits": {
+    "paymentApprovalAboveCHF": 500,
+    "undoDelaySeconds": 120
+  },
+  "people": {
+    "lea": {
+      "name": "Léa",
+      "role": "employe"
+    },
+    "noa": {
+      "name": "Noa",
+      "role": "dirigeant"
+    },
+    "sophie": {
+      "name": "Sophie",
+      "role": "employe"
+    }
+  },
+  "version": "0.1"
+}

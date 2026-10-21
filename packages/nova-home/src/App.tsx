@@ -7,6 +7,7 @@ import { Demander } from "./screens/Demander";
 import { CoutsScreen } from "./screens/Mesures";
 import { FlotteScreen } from "./screens/Flotte";
 import { ConnecteursScreen } from "./screens/Connecteurs";
+import { Departement } from "./screens/Departement";
 import { Design } from "./screens/Design";
 import { Entreprise } from "./screens/Entreprise";
 
@@ -30,7 +31,8 @@ export function App() {
   useEffect(() => {
     if (!state) return;
     const agent = route.name === "agent" ? state.agents.find((a) => a.id === route.id) : undefined;
-    document.title = agent ? agent.name : route.name === "design" ? "Système de design" : route.name === "demander" ? "Demander" : state.company.name;
+    const dep = route.name === "departement" ? state.departements?.find((d) => d.id === route.id) : undefined;
+    document.title = agent ? agent.name : dep ? dep.name : route.name === "design" ? "Système de design" : route.name === "demander" ? "Demander" : state.company.name;
   }, [state, route]);
 
   return (
@@ -52,6 +54,8 @@ export function App() {
             {online ? "Ouverture de l'entreprise…" : "Le service Nova ne répond pas. Il redémarre tout seul ; réessaie dans un instant."}
           </p>
         </Page>
+      ) : route.name === "departement" ? (
+        <Departement state={state} id={route.id} now={now} />
       ) : route.name === "connecteurs" ? (
         <ConnecteursScreen now={now} />
       ) : route.name === "flotte" ? (
