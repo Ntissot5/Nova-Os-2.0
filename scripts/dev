@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
-# Lance Nova Home en développement avec l'entreprise de démonstration :
+# Lance Nova en développement avec une entreprise (démonstration par défaut) :
 #   scripts/dev [entreprise]   → http://127.0.0.1:5173
+# Le gardien (nova-gateway) travaille sur une copie de data/ ; la clé ANTHROPIC_API_KEY active les questions.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 company=${1:-demo}
-state=${XDG_STATE_HOME:-$HOME/.local/state}/nova-dev
+state=${XDG_STATE_HOME:-$HOME/.local/state}/nova-dev/$company
 mkdir -p "$state"
 
 nix eval --raw ".#companyJson.$company" > "$state/company.json"
 accent=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1])).brand.accent)' "$state/company.json")
 node design/build.mjs theme "$accent" "$state/theme.css"
+[ -d "$state/data" ] || cp -r "companies/$company/data" "$state/data"
+person=$(node -e 'const p=JSON.parse(require("fs").readFileSync(process.argv[1])).people; console.log(Object.keys(p).find(k=>p[k].role==="dirigeant"))' "$state/company.json")
 
-npm run build -w nova-daemon >/dev/null
-NOVA_COMPANY="$state/company.json" NOVA_THEME_CSS="$state/theme.css" NOVA_DATA="$state/data" NOVA_DEMO=1 \
-  node packages/nova-daemon/dist/server.js &
-trap 'kill $!' EXIT
+npm run build -w nova-server >/dev/null
+NOVA_COMPANY="$state/company.json" NOVA_DATA="$state/data" NOVA_DEMO=1 node packages/nova-server/dist/gateway/main.js &
+gw=$!
+NOVA_PERSON="$person" NOVA_THEME_CSS="$state/theme.css" node packages/nova-server/dist/daemon/main.js &
+dm=$!
+trap 'kill $gw $dm' EXIT
 npm run dev -w nova-home

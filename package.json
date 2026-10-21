@@ -5,8 +5,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w nova-daemon && npm run build -w nova-home",
-    "test": "npm test -w nova-daemon",
+    "build": "npm run build -w nova-server && npm run build -w nova-home",
+    "test": "npm test -w nova-server",
     "test:ui": "node tests/ui.mjs",
     "typecheck": "npm run typecheck --workspaces",
     "dev": "scripts/dev"

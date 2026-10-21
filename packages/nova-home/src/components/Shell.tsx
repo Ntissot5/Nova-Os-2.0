@@ -1,7 +1,7 @@
 // Le cadre de Nova Home : le fond vivant et le rail d'icônes flottant (Entreprise, puis chaque agent).
 
 import type { ReactNode } from "react";
-import type { State } from "../../../nova-daemon/src/types";
+import type { State } from "../../../nova-server/src/core/types";
 import type { Route } from "../route";
 import { Monogram } from "./ui";
 
@@ -22,6 +22,13 @@ const Home = () => (
   </svg>
 );
 
+const Search = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </svg>
+);
+
 export function Rail({ state, route }: { state: State | null; route: Route }) {
   return (
     <nav aria-label="Navigation">
@@ -29,6 +36,11 @@ export function Rail({ state, route }: { state: State | null; route: Route }) {
         <li>
           <a href="#/" aria-current={route.name === "entreprise" ? "page" : undefined} aria-label="Entreprise">
             <Home />
+          </a>
+        </li>
+        <li>
+          <a href="#/demander" aria-current={route.name === "demander" ? "page" : undefined} aria-label="Demander (touche /)">
+            <Search />
           </a>
         </li>
         <li className="sep" aria-hidden="true" />

@@ -1,7 +1,7 @@
 // Référence vivante du système de design : tous les tokens et composants, en clair et en sombre.
 
 import { useState } from "react";
-import type { AgentState, Autonomy, Task } from "../../../nova-daemon/src/types";
+import type { AgentState, Autonomy, Task } from "../../../nova-server/src/core/types";
 import { Feed } from "../components/Feed";
 import { Page } from "../components/Shell";
 import { AutonomyPicker, Bloc, Button, Chiffre, Doc, Monogram, Phrase } from "../components/ui";

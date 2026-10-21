@@ -1,6 +1,6 @@
 // L'espace Entreprise : toute la boîte en une vision, en tuiles de verre.
 
-import type { AgentState, State, Task } from "../../../nova-daemon/src/types";
+import type { AgentState, State, Task } from "../../../nova-server/src/core/types";
 import { act } from "../api";
 import { Feed } from "../components/Feed";
 import { Page } from "../components/Shell";

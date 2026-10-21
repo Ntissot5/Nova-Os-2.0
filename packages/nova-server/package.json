@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "bin": {
-    "nova-daemon": "dist/server.js"
+    "nova-daemon": "dist/daemon/main.js",
+    "nova-gateway": "dist/gateway/main.js"
   },
   "scripts": {
     "build": "tsc -p .",

@@ -1,5 +1,6 @@
 // Nova Shell : la barre du haut de Nova OS.
-// À gauche, le nom de l'entreprise (ouvre l'espace Entreprise). À droite, « 2 à valider » quand
+// À gauche, le nom de l'entreprise (ouvre l'espace Entreprise) puis « Demander… » (questions en
+// langage naturel). À droite, « 2 à valider » quand
 // une action attend. Les données viennent de nova-daemon ; l'extension ne décide rien.
 
 import Clutter from "gi://Clutter";
@@ -52,12 +53,14 @@ export default class NovaShell extends Extension {
   enable() {
     this._session = new Soup.Session({ timeout: 2 });
     this._company = new NovaButton(readCompanyName(), "nova-company", () => open("#/"));
+    this._ask = new NovaButton("Demander…", "nova-ask", () => open("#/demander"));
     this._pending = new NovaButton("", "nova-pending", () => open("#/"));
     this._pending.hide();
 
     // Le bouton « Activités » laisse sa place au nom de l'entreprise.
     Main.panel.statusArea.activities?.hide();
     Main.panel.addToStatusArea("nova-company", this._company, 0, "left");
+    Main.panel.addToStatusArea("nova-ask", this._ask, 1, "left");
     Main.panel.addToStatusArea("nova-pending", this._pending, 0, "right");
 
     this._poll();
@@ -73,8 +76,9 @@ export default class NovaShell extends Extension {
     this._session?.abort();
     this._session = null;
     this._company?.destroy();
+    this._ask?.destroy();
     this._pending?.destroy();
-    this._company = this._pending = null;
+    this._company = this._ask = this._pending = null;
     Main.panel.statusArea.activities?.show();
   }
 
