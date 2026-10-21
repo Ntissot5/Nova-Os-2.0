@@ -38,7 +38,7 @@
 **État (21 octobre 2026) :**
 - ✓ `nova-gateway` : connecteurs, droits par agent, journal, autonomie appliquée sur l'aperçu des connecteurs, actions des agents exécutées sur le bus.
 - ✓ 5 connecteurs, 16 tests de contrat (vrai serveur et vrai client MCP).
-- ⏳ Fournisseurs réels IMAP/SMTP et CalDAV : test VM contre Dovecot, Mailpit et Radicale (`checks.connecteurs-reels`), résultat à confirmer.
+- ✓ Fournisseurs réels IMAP/SMTP et CalDAV : 3/3 contre Dovecot, Mailpit et Radicale dans une VM (`checks.connecteurs-reels`, CI). Le test a trouvé un vrai défaut, corrigé : l'adresse d'expédition SMTP doit être distincte de l'identifiant IMAP.
 - ✓ Questions en langage naturel (`/`, rail, barre du haut), étapes visibles, sources citées ; boucle testée avec un faux modèle.
 - ⏳ Mesure p95 : en attente d'une clé d'API Anthropic sur le Hub.
 - ⏳ Authentification OIDC : reportée au premier poste distant (D-020).
